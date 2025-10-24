@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>minions</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; }
+        td, th { border: 1px solid #ddd; padding: 8px; }
+        button { margin: 2px; }
+    </style>
+</head>
+<body>
+    <h1>Processes</h1>
+    <table>
+        <tr>
+            <th>Flake</th>
+            <th>Env Vars</th>
+            <th>CLI Args</th>
+            <th>Actions</th>
+        </tr>
+        {{PROCESS_ROWS}}
+    </table>
+    <form action="/process/new" method="GET">
+        <button>➕ New Process</button>
+    </form>
+</body>
+</html>
