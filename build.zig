@@ -3,19 +3,26 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const mod = b.addModule("temp", .{
+
+    const mod = b.addModule("minions", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
+        .link_libc = true,
     });
 
+    mod.addCSourceFile(.{
+        .file = b.path("sqlite/sqlite3.c"),
+    });
+    mod.addIncludePath(b.path("sqlite"));
+
     const exe = b.addExecutable(.{
-        .name = "temp",
+        .name = "minions",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "temp", .module = mod },
+                .{ .name = "minions", .module = mod },
             },
         }),
     });
