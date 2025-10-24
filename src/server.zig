@@ -28,12 +28,13 @@ const ContentType = enum {
 
 fn resolvePath(allocator: std.mem.Allocator, root_path: []const u8, path: []const u8) ?[]u8 {
     const clean_request = if (path.len > 0 and path[0] == '/') path[1..] else path;
+    const file_path = if (clean_request.len == 0) "index.html" else clean_request;
 
-    if (std.mem.indexOf(u8, clean_request, "..")) |_| {
+    if (std.mem.indexOf(u8, file_path, "..")) |_| {
         return null;
     }
 
-    return std.fs.path.join(allocator, &[_][]const u8{ root_path, clean_request }) catch {
+    return std.fs.path.join(allocator, &[_][]const u8{ root_path, file_path }) catch {
         return null;
     };
 }
