@@ -24,6 +24,29 @@
           overlays = [zig-overlay.overlays.default];
         };
       in {
+        packages.test = pkgs.writeShellScriptBin "test-minion" ''
+          echo "=== Test Minion ==="
+          echo "PID: $$"
+          echo "Args: $@"
+          echo "Arg count: $#"
+          echo ""
+          echo "=== Environment Variables ==="
+          echo "USER: $USER"
+          echo "PWD: $PWD"
+          echo ""
+          echo "=== Custom Vars (if set) ==="
+          echo "TEST_VAR: ''${TEST_VAR:-<not set>}"
+          echo "CUSTOM_VAR: ''${CUSTOM_VAR:-<not set>}"
+          echo ""
+          echo "=== All Args Individually ==="
+          for i in "$@"; do
+            echo "  - $i"
+          done
+          echo ""
+          echo "Running indefinitely (kill with: kill $$)"
+          while true; do sleep 1; done
+        '';
+
         devShells.default = pkgs.mkShell {
           packages = [
             pkgs.zigpkgs."0.15.1"
