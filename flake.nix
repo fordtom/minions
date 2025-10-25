@@ -47,7 +47,7 @@
           done
           echo ""
           echo "Running indefinitely (kill with: kill $$)"
-          while true; do sleep 1 & wait $!; done
+          while true; do sleep 1; done
         '';
 
         devShells.default = pkgs.mkShell {
