@@ -23,7 +23,12 @@ const ProcessState = struct {
     status: Status,
 };
 
-const Status = enum { running, stopped, crashed };
+const Status = enum(i32) {
+    stopped = 0,
+    running = 1,
+    crashed = 2,
+    invalid = 3,
+};
 
 const DbError = error{
     DatabaseOpenFailed,
@@ -40,6 +45,12 @@ const Database = struct {
 
         if (result != sqlite.SQLITE_OK) {
             return DbError.DatabaseOpenFailed;
+        }
+
+        const fk_result = sqlite.sqlite3_exec(db, "PRAGMA foreign_keys = ON", null, null, null);
+        if (fk_result != sqlite.SQLITE_OK) {
+            _ = sqlite.sqlite3_close(db.?);
+            return DbError.DatabaseExecuteFailed;
         }
 
         return Database{ .db = db.? };
@@ -64,7 +75,7 @@ const Database = struct {
             \\CREATE TABLE IF NOT EXISTS process_state (
             \\    process_id INTEGER PRIMARY KEY,
             \\    pid INTEGER,
-            \\    status TEXT NOT NULL,
+            \\    status INTEGER NOT NULL,
             \\    FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE CASCADE
             \\);
         ;
@@ -209,6 +220,50 @@ const Database = struct {
         }
 
         return try list.toOwnedSlice(allocator);
+    }
+
+    pub fn upsertProcessState(self: *Database, process_id: i64, pid: ?i32, status: Status) DbError!void {
+        var stmt: ?*sqlite.sqlite3_stmt = null;
+        const sql = "INSERT OR REPLACE INTO process_state (process_id, pid, status) VALUES (?, ?, ?)";
+
+        try self.checkOk(sqlite.sqlite3_prepare_v2(self.db, sql.ptr, @intCast(sql.len), &stmt, null));
+        defer _ = sqlite.sqlite3_finalize(stmt);
+
+        try self.checkOk(sqlite.sqlite3_bind_int64(stmt, 1, process_id));
+
+        if (pid) |p| {
+            try self.checkOk(sqlite.sqlite3_bind_int(stmt, 2, p));
+        } else {
+            try self.checkOk(sqlite.sqlite3_bind_null(stmt, 2));
+        }
+
+        try self.checkOk(sqlite.sqlite3_bind_int(stmt, 3, @intFromEnum(status)));
+        try self.checkDone(sqlite.sqlite3_step(stmt));
+    }
+
+    pub fn getProcessState(self: *Database, process_id: i64) !?ProcessState {
+        var stmt: ?*sqlite.sqlite3_stmt = null;
+        const sql = "SELECT process_id, pid, status FROM process_state WHERE process_id = ?";
+
+        try self.checkOk(sqlite.sqlite3_prepare_v2(self.db, sql.ptr, @intCast(sql.len), &stmt, null));
+        defer _ = sqlite.sqlite3_finalize(stmt);
+
+        try self.checkOk(sqlite.sqlite3_bind_int64(stmt, 1, process_id));
+
+        const result = sqlite.sqlite3_step(stmt);
+        if (result != sqlite.SQLITE_ROW) {
+            return if (result == sqlite.SQLITE_DONE) null else self.sqliteError(DbError.DatabaseExecuteFailed);
+        }
+
+        const pid_type = sqlite.sqlite3_column_type(stmt, 1);
+        const pid: ?i32 = if (pid_type == sqlite.SQLITE_NULL) null else @intCast(sqlite.sqlite3_column_int(stmt, 1));
+        const status = sqlite.sqlite3_column_int(stmt, 2);
+
+        return ProcessState{
+            .process_id = process_id,
+            .pid = pid,
+            .status = @enumFromInt(status),
+        };
     }
 
     fn sqliteError(self: *Database, comptime err: DbError) DbError {
@@ -380,4 +435,53 @@ test "database list processes" {
     try std.testing.expectEqualStrings("github:fordtom/minions#test", processes[1].flake_url);
     try std.testing.expectEqualStrings("FOO=BAR", processes[1].env_vars.?);
     try std.testing.expectEqualStrings("--help", processes[1].args.?);
+}
+
+test "database upsert and get process state" {
+    var db = try Database.init(":memory:");
+    defer db.deinit() catch {};
+    try db.initSchema();
+
+    const id = try db.createProcess("github:user/repo#app", null, null);
+    try std.testing.expectEqual(@as(i64, 1), id);
+
+    try db.upsertProcessState(id, 123, .running);
+
+    const state = try db.getProcessState(id);
+    try std.testing.expect(state != null);
+
+    try std.testing.expectEqual(@as(i64, 1), state.?.process_id);
+    try std.testing.expectEqual(@as(i32, 123), state.?.pid);
+    try std.testing.expectEqual(.running, state.?.status);
+
+    try db.upsertProcessState(id, 456, .stopped);
+
+    const state_updated = try db.getProcessState(id);
+    try std.testing.expect(state_updated != null);
+
+    try std.testing.expectEqual(@as(i64, 1), state_updated.?.process_id);
+    try std.testing.expectEqual(@as(i32, 456), state_updated.?.pid);
+    try std.testing.expectEqual(.stopped, state_updated.?.status);
+
+    const state_missing = try db.getProcessState(999);
+    try std.testing.expect(state_missing == null);
+}
+
+test "database cascade delete process state" {
+    var db = try Database.init(":memory:");
+    defer db.deinit() catch {};
+    try db.initSchema();
+
+    const id = try db.createProcess("github:user/repo#app", null, null);
+    try std.testing.expectEqual(@as(i64, 1), id);
+
+    try db.upsertProcessState(id, 123, .running);
+
+    const state = try db.getProcessState(id);
+    try std.testing.expect(state != null);
+
+    try db.deleteProcess(id);
+
+    const state_missing = try db.getProcessState(id);
+    try std.testing.expect(state_missing == null);
 }
