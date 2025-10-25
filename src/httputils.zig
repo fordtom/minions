@@ -20,7 +20,7 @@ pub fn parseKeyValuePairs(allocator: std.mem.Allocator, query_string: []const u8
         params.deinit();
     }
 
-    var pairs = std.mem.split(u8, query_string, "&");
+    var pairs = std.mem.splitScalar(u8, query_string, "&");
     while (pairs.next()) |pair| {
         if (std.mem.indexOf(u8, pair, "=")) |eq_index| {
             const key = try allocator.dupe(u8, pair[0..eq_index]);
@@ -39,7 +39,8 @@ pub fn parseKeyValuePairs(allocator: std.mem.Allocator, query_string: []const u8
 pub fn getQueryParam(target: []const u8, key: []const u8) ?[]const u8 {
     if (std.mem.indexOf(u8, target, "?")) |query_index| {
         const query_string = target[query_index + 1 ..];
-        while (std.mem.split(u8, query_string, "&").next()) |pair| {
+        var pairs = std.mem.splitScalar(u8, query_string, '&');
+        while (pairs.next()) |pair| {
             if (std.mem.startsWith(u8, pair, key) and pair.len > key.len and pair[key.len] == '=') {
                 return pair[key.len + 1 ..];
             }

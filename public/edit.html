@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Process - minions</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; }
+        label { display: block; margin-top: 15px; font-weight: bold; }
+        input[type="text"], textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        textarea { min-height: 60px; font-family: monospace; }
+        button { margin-top: 20px; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <h1>Edit Process</h1>
+    <form action="/process/{{PROCESS_ID}}/update" method="POST">
+        <label for="flake_url">Flake URL</label>
+        <input type="text" id="flake_url" name="flake_url" value="{{FLAKE_URL}}" required>
+        
+        <label for="env_vars">Environment Variables</label>
+        <textarea id="env_vars" name="env_vars">{{ENV_VARS}}</textarea>
+        
+        <label for="args">CLI Arguments</label>
+        <textarea id="args" name="args">{{ARGS}}</textarea>
+        
+        <button type="submit">💾 Save</button>
+        <button type="button" onclick="window.location.href='/'">Cancel</button>
+    </form>
+</body>
+</html>
+

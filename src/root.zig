@@ -1,6 +1,6 @@
 const std = @import("std");
 pub const db = @import("db.zig");
-pub const process = @import("process.zig");
+// pub const process = @import("process.zig");
 pub const httputils = @import("httputils.zig");
 
 pub fn route(
@@ -17,11 +17,11 @@ pub fn route(
         return handleOverview(request, database, allocator);
     }
 
-    // // GET /edit or /edit?id=123
-    // if (method == .GET and std.mem.startsWith(u8, target, "/edit")) {
-    //     const id_str = httputils.getQueryParam(target, "id");
-    //     return handleEdit(request, database, allocator, id_str);
-    // }
+    // GET /edit or /edit?id=123
+    if (method == .GET and std.mem.startsWith(u8, target, "/edit")) {
+        const id_str = httputils.getQueryParam(target, "id");
+        return handleEdit(request, database, allocator, id_str);
+    }
 
     // // POST /api/processes/toggle
     // if (method == .POST and std.mem.eql(u8, target, "/api/processes/toggle")) {
@@ -68,7 +68,8 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
             \\            <td>{s}</td>
             \\            <td>{s}</td>
             \\            <td>
-            \\                <form action="/process/edit?id={d}" method="GET" style="display:inline;">
+            \\                <form action="/edit" method="GET" style="display:inline;">
+            \\                    <input type="hidden" name="id" value="{d}">
             \\                    <button>✏️</button>
             \\                </form>
             \\                <form action="/process/{d}/start" method="POST" style="display:inline;">
@@ -90,13 +91,28 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
     try request.respond(output, .{ .status = .ok, .extra_headers = &.{httputils.CONTENT_TYPE_HTML} });
 }
 
-// fn handleEdit(request: *std.http.Server.Request, database: *db.Database, allocator: std.mem.Allocator, id: ?[]const u8) !void {
-//     // TODO: if id != null, query process and prefill form
-//     _ = database;
-//     _ = id;
-//     const html = "<h1>Edit</h1>";
-//     try request.respond(html, .{ .status = .ok, .extra_headers = &.{httputils.CONTENT_TYPE_HTML} });
-// }
+fn handleEdit(request: *std.http.Server.Request, database: *db.Database, allocator: std.mem.Allocator, id: ?[]const u8) !void {
+    var template = try httputils.readFile(allocator, "public/edit.html");
+    defer allocator.free(template);
+
+    if (id) |id_str| {
+        const id_int = try std.fmt.parseInt(i64, id_str, 10);
+        const process = try database.getProcess(allocator, id_int);
+        if (process) |p| {
+            template = try std.mem.replaceOwned(u8, allocator, template, "{{PROCESS_ID}}", id_str);
+            template = try std.mem.replaceOwned(u8, allocator, template, "{{FLAKE_URL}}", p.flake_url);
+            template = try std.mem.replaceOwned(u8, allocator, template, "{{ENV_VARS}}", p.env_vars orelse "");
+            template = try std.mem.replaceOwned(u8, allocator, template, "{{ARGS}}", p.args orelse "");
+        }
+    } else {
+        template = try std.mem.replaceOwned(u8, allocator, template, "{{PROCESS_ID}}", "new");
+        template = try std.mem.replaceOwned(u8, allocator, template, "{{FLAKE_URL}}", "");
+        template = try std.mem.replaceOwned(u8, allocator, template, "{{ENV_VARS}}", "");
+        template = try std.mem.replaceOwned(u8, allocator, template, "{{ARGS}}", "");
+    }
+
+    try request.respond(template, .{ .status = .ok, .extra_headers = &.{httputils.CONTENT_TYPE_HTML} });
+}
 
 // fn handleToggle(request: *std.http.Server.Request, reader: anytype, database: *db.Database, allocator: std.mem.Allocator) !void {
 //     // TODO: read body, parse id, toggle state
