@@ -25,6 +25,9 @@
         };
       in {
         packages.test = pkgs.writeShellScriptBin "test-minion" ''
+          # Handle SIGTERM gracefully
+          trap 'echo "Received SIGTERM, exiting..."; exit 0' TERM
+
           echo "=== Test Minion ==="
           echo "PID: $$"
           echo "Args: $@"
@@ -44,7 +47,7 @@
           done
           echo ""
           echo "Running indefinitely (kill with: kill $$)"
-          while true; do sleep 1; done
+          while true; do sleep 1 & wait $!; done
         '';
 
         devShells.default = pkgs.mkShell {
