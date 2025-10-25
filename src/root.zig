@@ -1,7 +1,7 @@
 const std = @import("std");
 pub const db = @import("db.zig");
 pub const nix = @import("nix.zig");
-pub const httputils = @import("httputils.zig");
+pub const utils = @import("utils.zig");
 
 pub fn route(
     request: *std.http.Server.Request,
@@ -18,7 +18,7 @@ pub fn route(
 
     // GET /edit or /edit?id=123
     if (method == .GET and std.mem.startsWith(u8, target, "/edit")) {
-        const id_str = httputils.getQueryParam(target, "id");
+        const id_str = utils.getQueryParam(target, "id");
         return handleEdit(request, database, allocator, id_str);
     }
 
@@ -52,7 +52,7 @@ pub fn route(
 }
 
 fn handleOverview(request: *std.http.Server.Request, database: *db.Database, allocator: std.mem.Allocator) !void {
-    const template = try httputils.readFile(allocator, "public/index.html");
+    const template = try utils.readFile(allocator, "public/index.html");
 
     const process_list = try database.listProcesses(allocator);
     defer {
@@ -94,11 +94,11 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
     }
 
     const output = try std.mem.replaceOwned(u8, allocator, template, "{{PROCESS_ROWS}}", rows.items);
-    try request.respond(output, .{ .status = .ok, .extra_headers = &.{httputils.CONTENT_TYPE_HTML} });
+    try request.respond(output, .{ .status = .ok, .extra_headers = &.{utils.CONTENT_TYPE_HTML} });
 }
 
 fn handleEdit(request: *std.http.Server.Request, database: *db.Database, allocator: std.mem.Allocator, id: ?[]const u8) !void {
-    var template = try httputils.readFile(allocator, "public/edit.html");
+    var template = try utils.readFile(allocator, "public/edit.html");
 
     if (id) |id_str| {
         const id_int = try std.fmt.parseInt(i64, id_str, 10);
@@ -116,7 +116,7 @@ fn handleEdit(request: *std.http.Server.Request, database: *db.Database, allocat
         template = try std.mem.replaceOwned(u8, allocator, template, "{{ARGS}}", "");
     }
 
-    try request.respond(template, .{ .status = .ok, .extra_headers = &.{httputils.CONTENT_TYPE_HTML} });
+    try request.respond(template, .{ .status = .ok, .extra_headers = &.{utils.CONTENT_TYPE_HTML} });
 }
 
 fn handleStart(request: *std.http.Server.Request, database: *db.Database, id_str: []const u8) !void {
@@ -158,7 +158,7 @@ fn handleSave(request: *std.http.Server.Request, database: *db.Database, allocat
     const reader = request.readerExpectNone(&read_buf);
     const body = try reader.readAlloc(allocator, request.head.content_length orelse return error.NoContentLength);
 
-    var params = try httputils.parseKeyValuePairs(allocator, body);
+    var params = try utils.parseKeyValuePairs(allocator, body);
 
     const flake_url = params.get("flake_url") orelse return error.MissingFlakeUrl;
     const env_vars = params.get("env_vars");

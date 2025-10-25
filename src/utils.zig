@@ -41,6 +41,35 @@ pub fn getQueryParam(target: []const u8, key: []const u8) ?[]const u8 {
     return null;
 }
 
+pub fn parseDotEnv(allocator: std.mem.Allocator, env_vars: []const u8) !std.StringHashMap([]const u8) {
+    var params = std.StringHashMap([]const u8).init(allocator);
+
+    var pairs = std.mem.splitScalar(u8, env_vars, '\n');
+    while (pairs.next()) |pair| {
+        const trimmed = std.mem.trim(u8, pair, " \t\r");
+
+        if (trimmed.len == 0 or trimmed[0] == '#') continue;
+
+        if (std.mem.indexOf(u8, trimmed, "=")) |eq_index| {
+            const key = std.mem.trim(u8, trimmed[0..eq_index], " \t");
+            const value_raw = std.mem.trim(u8, trimmed[eq_index + 1 ..], " \t");
+
+            const value = if (value_raw.len >= 2 and
+                ((value_raw[0] == '"' and value_raw[value_raw.len - 1] == '"') or
+                    (value_raw[0] == '\'' and value_raw[value_raw.len - 1] == '\'')))
+                value_raw[1 .. value_raw.len - 1]
+            else
+                value_raw;
+
+            const key_copy = try allocator.dupe(u8, key);
+            const value_copy = try allocator.dupe(u8, value);
+            try params.put(key_copy, value_copy);
+        }
+    }
+
+    return params;
+}
+
 test "getQueryParam parses values and handles missing" {
     // present
     const v_id_opt = getQueryParam("/edit?id=123&foo=bar", "id");
@@ -82,4 +111,47 @@ test "parseKeyValuePairs parses and percent-decodes" {
 
     const bad = params.get("badpair");
     try std.testing.expect(bad == null);
+}
+
+test "dotenv parsing" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const dotenv =
+        \\# Comment line
+        \\KEY1=value1
+        \\KEY2=value2
+        \\
+        \\# Another comment
+        \\QUOTED_DOUBLE="value with spaces"
+        \\QUOTED_SINGLE='another value'
+        \\SPACES_AROUND = trimmed value
+        \\EMPTY_VALUE=
+        \\UNQUOTED=no quotes here
+    ;
+
+    var params = try parseDotEnv(allocator, dotenv);
+    defer params.deinit();
+
+    // Basic values
+    try std.testing.expectEqualStrings("value1", params.get("KEY1").?);
+    try std.testing.expectEqualStrings("value2", params.get("KEY2").?);
+
+    // Quoted values (quotes should be stripped)
+    try std.testing.expectEqualStrings("value with spaces", params.get("QUOTED_DOUBLE").?);
+    try std.testing.expectEqualStrings("another value", params.get("QUOTED_SINGLE").?);
+
+    // Whitespace around = should be trimmed
+    try std.testing.expectEqualStrings("trimmed value", params.get("SPACES_AROUND").?);
+
+    // Empty value
+    try std.testing.expectEqualStrings("", params.get("EMPTY_VALUE").?);
+
+    // Unquoted
+    try std.testing.expectEqualStrings("no quotes here", params.get("UNQUOTED").?);
+
+    // Comments should not be parsed
+    try std.testing.expect(params.get("#") == null);
+    try std.testing.expect(params.get("Comment") == null);
 }
