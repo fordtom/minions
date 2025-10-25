@@ -1,6 +1,6 @@
 const std = @import("std");
 pub const db = @import("db.zig");
-// pub const process = @import("process.zig");
+pub const nix = @import("nix.zig");
 pub const httputils = @import("httputils.zig");
 
 pub fn route(
