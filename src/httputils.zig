@@ -40,3 +40,46 @@ pub fn getQueryParam(target: []const u8, key: []const u8) ?[]const u8 {
     }
     return null;
 }
+
+test "getQueryParam parses values and handles missing" {
+    // present
+    const v_id_opt = getQueryParam("/edit?id=123&foo=bar", "id");
+    try std.testing.expect(v_id_opt != null);
+    try std.testing.expectEqualStrings("123", v_id_opt.?);
+
+    // absent
+    const v_absent = getQueryParam("/edit?foo=bar", "id");
+    try std.testing.expect(v_absent == null);
+
+    // no query string
+    const v_none = getQueryParam("/edit", "id");
+    try std.testing.expect(v_none == null);
+
+    // prefix should not match ("id" vs "identifier")
+    const v_prefix = getQueryParam("/edit?identifier=1", "id");
+    try std.testing.expect(v_prefix == null);
+}
+
+test "parseKeyValuePairs parses and percent-decodes" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    var params = try parseKeyValuePairs(allocator, "a=1&b=2&na%6De=va%20l&badpair");
+    defer params.deinit();
+
+    const a = params.get("a");
+    try std.testing.expect(a != null);
+    try std.testing.expectEqualStrings("1", a.?);
+
+    const b = params.get("b");
+    try std.testing.expect(b != null);
+    try std.testing.expectEqualStrings("2", b.?);
+
+    const name = params.get("name");
+    try std.testing.expect(name != null);
+    try std.testing.expectEqualStrings("va l", name.?);
+
+    const bad = params.get("badpair");
+    try std.testing.expect(bad == null);
+}
