@@ -31,7 +31,12 @@ pub fn main() !void {
             continue;
         };
 
-        minions.route(&request, &database, allocator) catch {
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        defer arena.deinit();
+        const request_allocator = arena.allocator();
+
+        minions.route(&request, &database, request_allocator) catch |err| {
+            std.debug.print("error: {s}\n", .{@errorName(err)});
             continue;
         };
     }

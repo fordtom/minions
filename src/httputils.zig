@@ -11,25 +11,17 @@ pub fn readFile(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
 
 pub fn parseKeyValuePairs(allocator: std.mem.Allocator, query_string: []const u8) !std.StringHashMap([]const u8) {
     var params = std.StringHashMap([]const u8).init(allocator);
-    errdefer {
-        var iter = params.iterator();
-        while (iter.next()) |entry| {
-            allocator.free(entry.key_ptr.*);
-            allocator.free(entry.value_ptr.*);
-        }
-        params.deinit();
-    }
 
-    var pairs = std.mem.splitScalar(u8, query_string, "&");
+    var pairs = std.mem.splitScalar(u8, query_string, '&');
     while (pairs.next()) |pair| {
         if (std.mem.indexOf(u8, pair, "=")) |eq_index| {
             const key = try allocator.dupe(u8, pair[0..eq_index]);
             const value = try allocator.dupe(u8, pair[eq_index + 1 ..]);
-            errdefer {
-                allocator.free(key);
-                allocator.free(value);
-            }
-            try params.put(key, value);
+
+            const decoded_key = std.Uri.percentDecodeBackwards(key, key);
+            const decoded_value = std.Uri.percentDecodeBackwards(value, value);
+
+            try params.put(decoded_key, decoded_value);
         }
     }
 
@@ -47,17 +39,4 @@ pub fn getQueryParam(target: []const u8, key: []const u8) ?[]const u8 {
         }
     }
     return null;
-}
-
-pub fn readPostBody(allocator: std.mem.Allocator, reader: anytype, request: *std.http.Server.Request) ![]u8 {
-    const len = request.head.content_length orelse return error.NoContentLength;
-    if (len == 0) return "";
-
-    const body = try allocator.alloc(u8, @intCast(len));
-    errdefer allocator.free(body);
-
-    const bytes_read = try reader.readAll(body);
-    if (bytes_read != len) return error.IncompleteBody;
-
-    return body;
 }

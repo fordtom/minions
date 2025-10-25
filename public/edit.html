@@ -14,7 +14,7 @@
 </head>
 <body>
     <h1>Edit Process</h1>
-    <form action="/process/{{PROCESS_ID}}/update" method="POST">
+    <form action="/api/save/{{PROCESS_ID}}" method="POST">
         <label for="flake_url">Flake URL</label>
         <input type="text" id="flake_url" name="flake_url" value="{{FLAKE_URL}}" required>
         

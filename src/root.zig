@@ -5,7 +5,6 @@ pub const httputils = @import("httputils.zig");
 
 pub fn route(
     request: *std.http.Server.Request,
-    // reader: anytype,
     database: *db.Database,
     allocator: std.mem.Allocator,
 ) !void {
@@ -23,20 +22,29 @@ pub fn route(
         return handleEdit(request, database, allocator, id_str);
     }
 
-    // // POST /api/processes/toggle
-    // if (method == .POST and std.mem.eql(u8, target, "/api/processes/toggle")) {
-    //     return handleToggle(request, reader, database, allocator);
-    // }
+    // POST /api/start/{id}
+    if (method == .POST and std.mem.startsWith(u8, target, "/api/start/")) {
+        const id_str = target["/api/start/".len..];
+        return handleStart(request, database, id_str);
+    }
 
-    // // POST /api/processes/delete
-    // if (method == .POST and std.mem.eql(u8, target, "/api/processes/delete")) {
-    //     return handleDelete(request, reader, database, allocator);
-    // }
+    // POST /api/stop/{id}
+    if (method == .POST and std.mem.startsWith(u8, target, "/api/stop/")) {
+        const id_str = target["/api/stop/".len..];
+        return handleStop(request, database, id_str);
+    }
 
-    // // POST /api/processes (create or update)
-    // if (method == .POST and std.mem.eql(u8, target, "/api/processes")) {
-    //     return handleSave(request, reader, database, allocator);
-    // }
+    // POST /api/delete/{id}
+    if (method == .POST and std.mem.startsWith(u8, target, "/api/delete/")) {
+        const id_str = target["/api/delete/".len..];
+        return handleDelete(request, database, id_str);
+    }
+
+    // POST /api/save (create or update)
+    if (method == .POST and std.mem.startsWith(u8, target, "/api/save/")) {
+        const id_str = target["/api/save/".len..];
+        return handleSave(request, database, allocator, id_str);
+    }
 
     // 404 - just redirect to /
     const location_header = std.http.Header{ .name = "location", .value = "/" };
@@ -45,7 +53,6 @@ pub fn route(
 
 fn handleOverview(request: *std.http.Server.Request, database: *db.Database, allocator: std.mem.Allocator) !void {
     const template = try httputils.readFile(allocator, "public/index.html");
-    defer allocator.free(template);
 
     const process_list = try database.listProcesses(allocator);
     defer {
@@ -55,7 +62,6 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
 
     // initialise some buffer to store the generated html text in?
     var rows = std.ArrayList(u8){};
-    errdefer rows.deinit(allocator);
     const writer = rows.writer(allocator);
 
     for (process_list) |p| {
@@ -72,13 +78,13 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
             \\                    <input type="hidden" name="id" value="{d}">
             \\                    <button>✏️</button>
             \\                </form>
-            \\                <form action="/process/{d}/start" method="POST" style="display:inline;">
+            \\                <form action="/api/start/{d}" method="POST" style="display:inline;">
             \\                    <button>▶️</button>
             \\                </form>
-            \\                <form action="/process/{d}/stop" method="POST" style="display:inline;">
+            \\                <form action="/api/stop/{d}" method="POST" style="display:inline;">
             \\                    <button>⏹️</button>
             \\                </form>
-            \\                <form action="/process/{d}/delete" method="POST" style="display:inline;">
+            \\                <form action="/api/delete/{d}" method="POST" style="display:inline;">
             \\                    <button>🗑️</button>
             \\                </form>
             \\            </td>
@@ -93,7 +99,6 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
 
 fn handleEdit(request: *std.http.Server.Request, database: *db.Database, allocator: std.mem.Allocator, id: ?[]const u8) !void {
     var template = try httputils.readFile(allocator, "public/edit.html");
-    defer allocator.free(template);
 
     if (id) |id_str| {
         const id_int = try std.fmt.parseInt(i64, id_str, 10);
@@ -114,29 +119,63 @@ fn handleEdit(request: *std.http.Server.Request, database: *db.Database, allocat
     try request.respond(template, .{ .status = .ok, .extra_headers = &.{httputils.CONTENT_TYPE_HTML} });
 }
 
-// fn handleToggle(request: *std.http.Server.Request, reader: anytype, database: *db.Database, allocator: std.mem.Allocator) !void {
-//     // TODO: read body, parse id, toggle state
-//     _ = reader;
-//     _ = database;
-//     const location_header = std.http.Header{ .name = "location", .value = "/" };
-//     try request.respond("", .{ .status = .found, .extra_headers = &.{location_header} });
-// }
+fn handleStart(request: *std.http.Server.Request, database: *db.Database, id_str: []const u8) !void {
+    const id_int = try std.fmt.parseInt(i64, id_str, 10);
+    const processState = try database.getProcessState(id_int);
+    if (processState) |state| {
+        if (state.status == .stopped) {
+            try database.upsertProcessState(id_int, null, .running);
+        }
+    }
 
-// fn handleDelete(request: *std.http.Server.Request, reader: anytype, database: *db.Database, allocator: std.mem.Allocator) !void {
-//     // TODO: read body, parse id, delete process
-//     _ = reader;
-//     _ = database;
-//     const location_header = std.http.Header{ .name = "location", .value = "/" };
-//     try request.respond("", .{ .status = .found, .extra_headers = &.{location_header} });
-// }
+    const location_header = std.http.Header{ .name = "location", .value = "/" };
+    try request.respond("", .{ .status = .found, .extra_headers = &.{location_header} });
+}
 
-// fn handleSave(request: *std.http.Server.Request, reader: anytype, database: *db.Database, allocator: std.mem.Allocator) !void {
-//     // TODO: read body, parse fields, create or update based on id presence
-//     _ = reader;
-//     _ = database;
-//     const location_header = std.http.Header{ .name = "location", .value = "/" };
-//     try request.respond("", .{ .status = .found, .extra_headers = &.{location_header} });
-// }
+fn handleStop(request: *std.http.Server.Request, database: *db.Database, id_str: []const u8) !void {
+    const id_int = try std.fmt.parseInt(i64, id_str, 10);
+    const processState = try database.getProcessState(id_int);
+    if (processState) |state| {
+        if (state.status == .running) {
+            try database.upsertProcessState(id_int, null, .stopped);
+        }
+    }
+
+    const location_header = std.http.Header{ .name = "location", .value = "/" };
+    try request.respond("", .{ .status = .found, .extra_headers = &.{location_header} });
+}
+
+fn handleDelete(request: *std.http.Server.Request, database: *db.Database, id_str: []const u8) !void {
+    const id_int = try std.fmt.parseInt(i64, id_str, 10);
+    try database.deleteProcess(id_int);
+
+    const location_header = std.http.Header{ .name = "location", .value = "/" };
+    try request.respond("", .{ .status = .found, .extra_headers = &.{location_header} });
+}
+
+fn handleSave(request: *std.http.Server.Request, database: *db.Database, allocator: std.mem.Allocator, id_str: []const u8) !void {
+    var read_buf: [4096]u8 = undefined;
+    const reader = request.readerExpectNone(&read_buf);
+    const body = try reader.readAlloc(allocator, request.head.content_length orelse return error.NoContentLength);
+
+    var params = try httputils.parseKeyValuePairs(allocator, body);
+
+    const flake_url = params.get("flake_url") orelse return error.MissingFlakeUrl;
+    const env_vars = params.get("env_vars");
+    const args = params.get("args");
+
+    if (std.mem.eql(u8, id_str, "new")) {
+        const id_int = try database.createProcess(flake_url, env_vars, args);
+        try database.upsertProcessState(id_int, null, .stopped);
+    } else {
+        const id_int = try std.fmt.parseInt(i64, id_str, 10);
+        try database.upsertProcessState(id_int, null, .stopped);
+        try database.updateProcess(id_int, flake_url, env_vars, args);
+    }
+
+    const location_header = std.http.Header{ .name = "location", .value = "/" };
+    try request.respond("", .{ .status = .found, .extra_headers = &.{location_header} });
+}
 
 test {
     std.testing.refAllDecls(@This());
