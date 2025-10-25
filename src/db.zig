@@ -3,40 +3,49 @@ const sqlite = @cImport({
     @cInclude("sqlite3.h");
 });
 
-const Process = struct {
+pub const Process = struct {
     id: i64,
     flake_url: []const u8,
     env_vars: ?[]const u8,
     args: ?[]const u8,
     allocator: std.mem.Allocator,
 
-    fn deinit(self: *Process) void {
+    pub fn deinit(self: *Process) void {
         self.allocator.free(self.flake_url);
         if (self.env_vars) |ev| self.allocator.free(ev);
         if (self.args) |a| self.allocator.free(a);
     }
 };
 
-const ProcessState = struct {
+pub const ProcessState = struct {
     process_id: i64,
     pid: ?i32,
     status: Status,
 };
 
-const Status = enum(i32) {
+pub const Status = enum(i32) {
     stopped = 0,
     running = 1,
     crashed = 2,
     invalid = 3,
+
+    pub fn toString(self: Status) []const u8 {
+        switch (self) {
+            .stopped => return "Stopped",
+            .running => return "Running",
+            .crashed => return "Crashed",
+            .invalid => return "Invalid",
+        }
+    }
 };
 
-const DbError = error{
+pub const DbError = error{
     DatabaseOpenFailed,
     DatabaseCloseFailed,
     DatabaseExecuteFailed,
 };
 
-const Database = struct {
+pub const Database = struct {
     db: *sqlite.sqlite3,
 
     pub fn init(path: [:0]const u8) DbError!Database {
@@ -290,15 +299,6 @@ const Database = struct {
         }
     }
 };
-
-// Can we just splitlines and insert each string in beforehand?
-//
-// fn parseEnvVars(dotenv: []const u8) std.StringHashMap([]const u8) {
-//     const lines = std.mem.splitScalar(u8, dotenv, '\n');
-
-// }
-
-// HANDLE NULL TERMINATION ON EVERY STRING
 
 test "sqlite linking" {
     const version = sqlite.sqlite3_libversion();
