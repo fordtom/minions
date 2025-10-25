@@ -1,6 +1,15 @@
 const std = @import("std");
 const utils = @import("utils.zig");
 
+pub fn installNoZombieReaper() void {
+    var act = std.posix.Sigaction{
+        .handler = .{ .handler = std.posix.SIG.IGN },
+        .mask = std.posix.sigemptyset(),
+        .flags = std.posix.SA.NOCLDWAIT,
+    };
+    std.posix.sigaction(std.posix.SIG.CHLD, &act, null);
+}
+
 pub fn runFlake(allocator: std.mem.Allocator, flake_url: []const u8, env_vars: []const u8, args: []const u8) !i32 {
     var argv = std.ArrayList([]const u8){};
     defer argv.deinit(allocator);
@@ -14,6 +23,9 @@ pub fn runFlake(allocator: std.mem.Allocator, flake_url: []const u8, env_vars: [
     }
 
     var child = std.process.Child.init(argv.items, allocator);
+    child.stdin_behavior = .Ignore;
+    child.stdout_behavior = .Ignore;
+    child.stderr_behavior = .Ignore;
 
     var env_map = try std.process.getEnvMap(allocator);
     defer env_map.deinit();
@@ -38,19 +50,19 @@ pub fn killFlake(pid: i32) !void {
 
 pub fn isFlakeRunning(pid: i32) bool {
     std.posix.kill(pid, 0) catch {
-        std.debug.print("I'm dead\n", .{});
         return false;
     };
-    std.debug.print("I'm alive ({})\n", .{pid});
     return true;
 }
 
 test "run test flake" {
+    installNoZombieReaper();
+
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    const flake_url = "github:fordtom/minions#test";
+    const flake_url = ".#test";
     const env_vars = "TEST_VAR=foo\nCUSTOM_VAR=bar";
     const args = "arg1 arg2";
 
@@ -58,6 +70,8 @@ test "run test flake" {
     try std.testing.expect(pid > 0);
 
     std.debug.print("PID: {}\n", .{pid});
+
+    std.Thread.sleep(2_000 * std.time.ns_per_ms);
 
     try std.testing.expect(isFlakeRunning(pid));
 
