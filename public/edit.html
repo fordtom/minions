@@ -18,12 +18,12 @@
         <label for="flake_url">Flake URL</label>
         <input type="text" id="flake_url" name="flake_url" value="{{FLAKE_URL}}" required>
         
-        <label for="env_vars">Environment Variables</label>
-        <textarea id="env_vars" name="env_vars">{{ENV_VARS}}</textarea>
-        
         <label for="args">CLI Arguments</label>
         <textarea id="args" name="args">{{ARGS}}</textarea>
         
+        <label for="env_vars">Environment Variables</label>
+        <textarea id="env_vars" name="env_vars">{{ENV_VARS}}</textarea>
+
         <button type="submit">💾 Save</button>
         <button type="button" onclick="window.location.href='/'">Cancel</button>
     </form>
