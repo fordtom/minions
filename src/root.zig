@@ -25,7 +25,7 @@ pub fn route(
     // POST /api/start/{id}
     if (method == .POST and std.mem.startsWith(u8, target, "/api/start/")) {
         const id_str = target["/api/start/".len..];
-        return handleStart(request, database, id_str);
+        return handleStart(request, database, allocator, id_str);
     }
 
     // POST /api/stop/{id}
@@ -66,6 +66,13 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
 
     for (process_list) |p| {
         const state = try database.getProcessState(p.id);
+        var alive = false;
+
+        if (state.?.status == .running) {
+            if (state.?.pid) |pid| {
+                alive = nix.isFlakeRunning(pid);
+            }
+        }
 
         try writer.print(
             \\        <tr>
@@ -78,33 +85,44 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
             \\                    <input type="hidden" name="id" value="{d}">
             \\                    <button>✏️</button>
             \\                </form>
-            \\                <form action="/api/start/{d}" method="POST" style="display:inline;">
-            \\                    <button>▶️</button>
-            \\                </form>
-            \\                <form action="/api/stop/{d}" method="POST" style="display:inline;">
-            \\                    <button>⏹️</button>
-            \\                </form>
+        , .{ p.flake_url, p.args orelse "", p.env_vars orelse "", state.?.status.toString(), p.id });
+
+        if (alive) {
+            try writer.print(
+                \\                <form action="/api/stop/{d}" method="POST" style="display:inline;">
+                \\                    <button>⏹️</button>
+                \\                </form>
+            , .{p.id});
+        } else {
+            try writer.print(
+                \\                <form action="/api/start/{d}" method="POST" style="display:inline;">
+                \\                    <button>▶️</button>
+                \\                </form>
+            , .{p.id});
+        }
+
+        try writer.print(
             \\                <form action="/api/delete/{d}" method="POST" style="display:inline;">
             \\                    <button>🗑️</button>
             \\                </form>
             \\            </td>
             \\        </tr>
             \\
-        , .{ p.flake_url, p.args orelse "", p.env_vars orelse "", state.?.status.toString(), p.id, p.id, p.id, p.id });
+        , .{p.id});
     }
 
     const output = try std.mem.replaceOwned(u8, allocator, template, "{{PROCESS_ROWS}}", rows.items);
     try request.respond(output, .{ .status = .ok, .extra_headers = &.{utils.CONTENT_TYPE_HTML} });
 }
 
-fn handleEdit(request: *std.http.Server.Request, database: *db.Database, allocator: std.mem.Allocator, id: ?[]const u8) !void {
+fn handleEdit(request: *std.http.Server.Request, database: *db.Database, allocator: std.mem.Allocator, id_str: ?[]const u8) !void {
     var template = try utils.readFile(allocator, "public/edit.html");
 
-    if (id) |id_str| {
-        const id_int = try std.fmt.parseInt(i64, id_str, 10);
+    if (id_str) |id| {
+        const id_int = try std.fmt.parseInt(i64, id, 10);
         const process = try database.getProcess(allocator, id_int);
         if (process) |p| {
-            template = try std.mem.replaceOwned(u8, allocator, template, "{{PROCESS_ID}}", id_str);
+            template = try std.mem.replaceOwned(u8, allocator, template, "{{PROCESS_ID}}", id);
             template = try std.mem.replaceOwned(u8, allocator, template, "{{FLAKE_URL}}", p.flake_url);
             template = try std.mem.replaceOwned(u8, allocator, template, "{{ENV_VARS}}", p.env_vars orelse "");
             template = try std.mem.replaceOwned(u8, allocator, template, "{{ARGS}}", p.args orelse "");
@@ -119,12 +137,14 @@ fn handleEdit(request: *std.http.Server.Request, database: *db.Database, allocat
     try request.respond(template, .{ .status = .ok, .extra_headers = &.{utils.CONTENT_TYPE_HTML} });
 }
 
-fn handleStart(request: *std.http.Server.Request, database: *db.Database, id_str: []const u8) !void {
+fn handleStart(request: *std.http.Server.Request, database: *db.Database, allocator: std.mem.Allocator, id_str: []const u8) !void {
     const id_int = try std.fmt.parseInt(i64, id_str, 10);
+    const process = try database.getProcess(allocator, id_int);
     const processState = try database.getProcessState(id_int);
     if (processState) |state| {
         if (state.status == .stopped) {
-            try database.upsertProcessState(id_int, null, .running);
+            const pid = try nix.runFlake(allocator, process.?.flake_url, process.?.env_vars orelse "", process.?.args orelse "");
+            try database.upsertProcessState(id_int, pid, .running);
         }
     }
 
@@ -137,6 +157,7 @@ fn handleStop(request: *std.http.Server.Request, database: *db.Database, id_str:
     const processState = try database.getProcessState(id_int);
     if (processState) |state| {
         if (state.status == .running) {
+            try nix.killFlake(state.pid.?);
             try database.upsertProcessState(id_int, null, .stopped);
         }
     }
@@ -147,6 +168,12 @@ fn handleStop(request: *std.http.Server.Request, database: *db.Database, id_str:
 
 fn handleDelete(request: *std.http.Server.Request, database: *db.Database, id_str: []const u8) !void {
     const id_int = try std.fmt.parseInt(i64, id_str, 10);
+    const processState = try database.getProcessState(id_int);
+    if (processState) |state| {
+        if (state.status == .running) {
+            try nix.killFlake(state.pid.?);
+        }
+    }
     try database.deleteProcess(id_int);
 
     const location_header = std.http.Header{ .name = "location", .value = "/" };

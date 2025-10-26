@@ -26,15 +26,15 @@ pub const ProcessState = struct {
 pub const Status = enum(i32) {
     stopped = 0,
     running = 1,
-    crashed = 2,
-    invalid = 3,
+    // crashed = 2,
+    // invalid = 3,
 
     pub fn toString(self: Status) []const u8 {
         switch (self) {
             .stopped => return "Stopped",
             .running => return "Running",
-            .crashed => return "Crashed",
-            .invalid => return "Invalid",
+            // .crashed => return "Crashed",
+            // .invalid => return "Invalid",
         }
     }
 };
