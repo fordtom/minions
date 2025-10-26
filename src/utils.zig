@@ -18,6 +18,10 @@ pub fn parseKeyValuePairs(allocator: std.mem.Allocator, query_string: []const u8
             const key = try allocator.dupe(u8, pair[0..eq_index]);
             const value = try allocator.dupe(u8, pair[eq_index + 1 ..]);
 
+            for (value) |*c| {
+                if (c.* == '+') c.* = ' ';
+            }
+
             const decoded_key = std.Uri.percentDecodeBackwards(key, key);
             const decoded_value = std.Uri.percentDecodeBackwards(value, value);
 
