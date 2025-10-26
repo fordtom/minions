@@ -68,15 +68,18 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
         const state = try database.getProcessState(p.id);
         var alive = false;
 
-        var status_str = state.?.status.toString();
+        if (state.?.pid) |pid| {
+            alive = nix.isFlakeRunning(pid);
+        }
 
-        if (state.?.status == .running) {
-            if (state.?.pid) |pid| {
-                alive = nix.isFlakeRunning(pid);
-                if (alive) {
-                    status_str = try std.fmt.allocPrint(allocator, "{s} (PID: {d})", .{ status_str, pid });
-                }
-            }
+        var status_str: []const u8 = undefined;
+
+        if (alive) {
+            try database.upsertProcessState(p.id, state.?.pid, .running);
+            status_str = try std.fmt.allocPrint(allocator, "{s} (PID: {d})", .{ state.?.status.toString(), state.?.pid.? });
+        } else {
+            try database.upsertProcessState(p.id, null, .stopped);
+            status_str = try std.fmt.allocPrint(allocator, "{s}", .{state.?.status.toString()});
         }
 
         try writer.print(
