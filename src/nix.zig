@@ -62,7 +62,7 @@ test "run test flake" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    const flake_url = ".#test";
+    const flake_url = "github:fordtom/minions#test";
     const env_vars = "TEST_VAR=foo\nCUSTOM_VAR=bar";
     const args = "arg1 arg2";
 
