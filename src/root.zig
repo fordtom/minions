@@ -68,9 +68,14 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
         const state = try database.getProcessState(p.id);
         var alive = false;
 
+        var status_str = state.?.status.toString();
+
         if (state.?.status == .running) {
             if (state.?.pid) |pid| {
                 alive = nix.isFlakeRunning(pid);
+                if (alive) {
+                    status_str = try std.fmt.allocPrint(allocator, "{s} (PID: {d})", .{ status_str, pid });
+                }
             }
         }
 
@@ -85,7 +90,7 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
             \\                    <input type="hidden" name="id" value="{d}">
             \\                    <button>✏️</button>
             \\                </form>
-        , .{ p.flake_url, p.args orelse "", p.env_vars orelse "", state.?.status.toString(), p.id });
+        , .{ p.flake_url, p.args orelse "", p.env_vars orelse "", status_str, p.id });
 
         if (alive) {
             try writer.print(
