@@ -10,7 +10,7 @@ Manage long-running processes from Nix flakes through a simple web UI:
 - Start/stop/restart processes via `nix run`
 - Track process state and PIDs
 
-**Philosophy: Flakes-only, no exceptions.** If it doesn't work with `nix run github:user/repo#app`, it's out of scope.
+**Flakes-only, no exceptions.** If it doesn't work with `nix run github:user/repo#app`, it's out of scope.
 
 ## Usage
 
