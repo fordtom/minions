@@ -40,7 +40,7 @@ Add your Nix flake URL, configure args/env vars, and click start. minions handle
 
 Learning goals:
 
-- Zig HTTP server from scratch (`std.net`, `std.http`)
+- Zig HTTP server from scratch
 - C interop with vendored SQLite
 - Process spawning and lifecycle management
-- Deep Nix flakes integration
+- Further understanding nix
