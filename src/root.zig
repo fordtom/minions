@@ -75,11 +75,11 @@ fn handleOverview(request: *std.http.Server.Request, database: *db.Database, all
         var status_str: []const u8 = undefined;
 
         if (alive) {
-            try database.upsertProcessState(p.id, state.?.pid, .running);
-            status_str = try std.fmt.allocPrint(allocator, "{s} (PID: {d})", .{ state.?.status.toString(), state.?.pid.? });
+            try database.upsertProcessState(p.id, state.?.pid, .RUNNING);
+            status_str = try std.fmt.allocPrint(allocator, "{s} (PID: {d})", .{ @tagName(state.?.status), state.?.pid.? });
         } else {
-            try database.upsertProcessState(p.id, null, .stopped);
-            status_str = try std.fmt.allocPrint(allocator, "{s}", .{state.?.status.toString()});
+            try database.upsertProcessState(p.id, null, .STOPPED);
+            status_str = try std.fmt.allocPrint(allocator, "{s}", .{@tagName(state.?.status)});
         }
 
         try writer.print(
@@ -150,9 +150,9 @@ fn handleStart(request: *std.http.Server.Request, database: *db.Database, alloca
     const process = try database.getProcess(allocator, id_int);
     const processState = try database.getProcessState(id_int);
     if (processState) |state| {
-        if (state.status == .stopped) {
+        if (state.status == .STOPPED) {
             const pid = try nix.runFlake(allocator, process.?.flake_url, process.?.env_vars orelse "", process.?.args orelse "");
-            try database.upsertProcessState(id_int, pid, .running);
+            try database.upsertProcessState(id_int, pid, .RUNNING);
         }
     }
 
@@ -164,9 +164,9 @@ fn handleStop(request: *std.http.Server.Request, database: *db.Database, id_str:
     const id_int = try std.fmt.parseInt(i64, id_str, 10);
     const processState = try database.getProcessState(id_int);
     if (processState) |state| {
-        if (state.status == .running) {
+        if (state.status == .RUNNING) {
             try nix.killFlake(state.pid.?);
-            try database.upsertProcessState(id_int, null, .stopped);
+            try database.upsertProcessState(id_int, null, .STOPPED);
         }
     }
 
@@ -178,7 +178,7 @@ fn handleDelete(request: *std.http.Server.Request, database: *db.Database, id_st
     const id_int = try std.fmt.parseInt(i64, id_str, 10);
     const processState = try database.getProcessState(id_int);
     if (processState) |state| {
-        if (state.status == .running) {
+        if (state.status == .RUNNING) {
             try nix.killFlake(state.pid.?);
         }
     }
@@ -201,10 +201,10 @@ fn handleSave(request: *std.http.Server.Request, database: *db.Database, allocat
 
     if (std.mem.eql(u8, id_str, "new")) {
         const id_int = try database.createProcess(flake_url, env_vars, args);
-        try database.upsertProcessState(id_int, null, .stopped);
+        try database.upsertProcessState(id_int, null, .STOPPED);
     } else {
         const id_int = try std.fmt.parseInt(i64, id_str, 10);
-        try database.upsertProcessState(id_int, null, .stopped);
+        try database.upsertProcessState(id_int, null, .STOPPED);
         try database.updateProcess(id_int, flake_url, env_vars, args);
     }
 

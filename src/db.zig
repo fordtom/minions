@@ -23,20 +23,9 @@ pub const ProcessState = struct {
     status: Status,
 };
 
-pub const Status = enum(i32) {
-    stopped = 0,
-    running = 1,
-    // crashed = 2,
-    // invalid = 3,
-
-    pub fn toString(self: Status) []const u8 {
-        switch (self) {
-            .stopped => return "Stopped",
-            .running => return "Running",
-            // .crashed => return "Crashed",
-            // .invalid => return "Invalid",
-        }
-    }
+pub const Status = enum {
+    STOPPED,
+    RUNNING,
 };
 
 pub const DbError = error{
@@ -84,7 +73,7 @@ pub const Database = struct {
             \\CREATE TABLE IF NOT EXISTS process_state (
             \\    process_id INTEGER PRIMARY KEY,
             \\    pid INTEGER,
-            \\    status INTEGER NOT NULL,
+            \\    status TEXT NOT NULL,
             \\    FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE CASCADE
             \\);
         ;
@@ -246,7 +235,8 @@ pub const Database = struct {
             try self.checkOk(sqlite.sqlite3_bind_null(stmt, 2));
         }
 
-        try self.checkOk(sqlite.sqlite3_bind_int(stmt, 3, @intFromEnum(status)));
+        const status_str = @tagName(status);
+        try self.checkOk(sqlite.sqlite3_bind_text(stmt, 3, status_str.ptr, @intCast(status_str.len), null));
         try self.checkDone(sqlite.sqlite3_step(stmt));
     }
 
@@ -266,12 +256,17 @@ pub const Database = struct {
 
         const pid_type = sqlite.sqlite3_column_type(stmt, 1);
         const pid: ?i32 = if (pid_type == sqlite.SQLITE_NULL) null else @intCast(sqlite.sqlite3_column_int(stmt, 1));
-        const status = sqlite.sqlite3_column_int(stmt, 2);
+        const status_ptr = sqlite.sqlite3_column_text(stmt, 2);
+        const status = std.meta.stringToEnum(Status, std.mem.span(status_ptr));
+
+        if (status == null) {
+            return self.sqliteError(DbError.DatabaseExecuteFailed);
+        }
 
         return ProcessState{
             .process_id = process_id,
             .pid = pid,
-            .status = @enumFromInt(status),
+            .status = status.?,
         };
     }
 
@@ -445,23 +440,23 @@ test "database upsert and get process state" {
     const id = try db.createProcess("github:user/repo#app", null, null);
     try std.testing.expectEqual(@as(i64, 1), id);
 
-    try db.upsertProcessState(id, 123, .running);
+    try db.upsertProcessState(id, 123, .RUNNING);
 
     const state = try db.getProcessState(id);
     try std.testing.expect(state != null);
 
     try std.testing.expectEqual(@as(i64, 1), state.?.process_id);
     try std.testing.expectEqual(@as(i32, 123), state.?.pid);
-    try std.testing.expectEqual(.running, state.?.status);
+    try std.testing.expectEqual(.RUNNING, state.?.status);
 
-    try db.upsertProcessState(id, 456, .stopped);
+    try db.upsertProcessState(id, 456, .STOPPED);
 
     const state_updated = try db.getProcessState(id);
     try std.testing.expect(state_updated != null);
 
     try std.testing.expectEqual(@as(i64, 1), state_updated.?.process_id);
     try std.testing.expectEqual(@as(i32, 456), state_updated.?.pid);
-    try std.testing.expectEqual(.stopped, state_updated.?.status);
+    try std.testing.expectEqual(.STOPPED, state_updated.?.status);
 
     const state_missing = try db.getProcessState(999);
     try std.testing.expect(state_missing == null);
@@ -475,7 +470,7 @@ test "database cascade delete process state" {
     const id = try db.createProcess("github:user/repo#app", null, null);
     try std.testing.expectEqual(@as(i64, 1), id);
 
-    try db.upsertProcessState(id, 123, .running);
+    try db.upsertProcessState(id, 123, .RUNNING);
 
     const state = try db.getProcessState(id);
     try std.testing.expect(state != null);

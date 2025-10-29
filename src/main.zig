@@ -6,7 +6,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const address = try std.net.Address.parseIp("0.0.0.0", 3000);
+    const address = try std.net.Address.parseIp("127.0.0.1", 3000);
 
     var listener = try address.listen(.{ .reuse_address = true });
     defer listener.deinit();
