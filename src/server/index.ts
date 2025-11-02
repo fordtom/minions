@@ -1,0 +1,22 @@
+import { Hono } from "hono";
+import { serveStatic } from "hono/bun";
+import { ProcessDatabase } from "./db";
+import processRoutes from "./routes/processes";
+
+const app = new Hono();
+const db = new ProcessDatabase();
+
+app.route("/api/processes", processRoutes(db));
+
+if (process.env.NODE_ENV === "production") {
+	app.use("/*", serveStatic({ root: "./dist/client" }));
+	app.get("*", serveStatic({ path: "./dist/client/index.html" }));
+}
+
+const port = process.env.PORT || 3000;
+console.log(`🚀 Server running on http://localhost:${port}`);
+
+export default {
+	port,
+	fetch: app.fetch,
+};
