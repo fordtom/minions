@@ -1,0 +1,33 @@
+{
+  "name": "minions",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@biomejs/biome": "2.3.2",
+    "@types/bun": "latest",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.0",
+    "concurrently": "^9.2.1",
+    "vite": "^7.1.12"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "hono": "^4.10.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.5"
+  },
+  "scripts": {
+    "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
+    "dev:client": "vite",
+    "dev:server": "bun run --watch src/server/index.ts",
+    "build": "vite build && bun build src/server/index.ts --outdir dist/server --target bun",
+    "start": "bun run dist/server/index.js",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.server.json"
+  }
+}
