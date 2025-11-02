@@ -29,18 +29,28 @@ export const createColumns = (
 	},
 	{
 		accessorKey: "args",
-		header: "Args",
+		header: () => <div className="text-left">Args</div>,
+		cell: ({ getValue }) => (
+			<div className="text-left">{getValue() as string}</div>
+		),
 	},
 	{
 		accessorKey: "env_vars",
-		header: "Env Vars",
+		header: () => <div className="text-left">Env Vars</div>,
+		cell: ({ getValue }) => (
+			<div className="text-left">{getValue() as string}</div>
+		),
 	},
 	{
 		accessorKey: "state.status",
-		header: "Status",
+		header: () => <div className="text-right">Status</div>,
+		cell: ({ getValue }) => (
+			<div className="text-right">{getValue() as string}</div>
+		),
 	},
 	{
 		id: "actions",
+		header: "",
 		cell: ({ row }) => {
 			const id = row.original.id;
 			const isRunning = row.original.state.status === ProcessStatus.RUNNING;
