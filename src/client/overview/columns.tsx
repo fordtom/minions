@@ -68,6 +68,22 @@ export const createColumns = (
 				}
 			};
 
+			const handleDelete = async () => {
+				try {
+					const res = await fetch(`/api/processes/${id}`, {
+						method: "DELETE",
+					});
+					const result: ApiResponse<{ id: number }> = await res.json();
+					if (result.success) {
+						refetch();
+					} else {
+						console.error("Failed to delete:", result.error);
+					}
+				} catch (err) {
+					console.error("Failed to delete process:", err);
+				}
+			};
+
 			return (
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
@@ -78,13 +94,16 @@ export const createColumns = (
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
 						<DropdownMenuLabel>Actions</DropdownMenuLabel>
-						<DropdownMenuItem>Edit process</DropdownMenuItem>
-						<DropdownMenuSeparator />
 						<DropdownMenuItem onClick={handleStart}>
 							Start process
 						</DropdownMenuItem>
 						<DropdownMenuItem onClick={handleStop}>
 							Stop process
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem>Edit process</DropdownMenuItem>
+						<DropdownMenuItem onClick={handleDelete}>
+							Delete process
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
