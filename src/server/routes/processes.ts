@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import {
 	type Process,
 	type ProcessInput,
+	type ProcessState,
 	ProcessStatus,
 } from "../../shared/types";
 import type { ProcessDatabase } from "../db";
@@ -44,7 +45,7 @@ export default function processRoutes(db: ProcessDatabase) {
 				success: true,
 				data: {
 					...process,
-					state: state ?? undefined,
+					state: state as ProcessState,
 				},
 			});
 		} catch {
@@ -75,7 +76,7 @@ export default function processRoutes(db: ProcessDatabase) {
 					success: true,
 					data: {
 						...(process as Process),
-						state: state ?? undefined,
+						state: state as ProcessState,
 					},
 				},
 				201,
@@ -106,8 +107,8 @@ export default function processRoutes(db: ProcessDatabase) {
 			}
 
 			// Don't allow updates while running
-			const state = db.getProcessState(id);
-			if (state?.status === ProcessStatus.RUNNING) {
+			const state = db.getProcessState(id) as ProcessState;
+			if (state.status === ProcessStatus.RUNNING) {
 				return c.json(
 					{
 						success: false,
@@ -131,7 +132,7 @@ export default function processRoutes(db: ProcessDatabase) {
 				success: true,
 				data: {
 					...(updated as Process),
-					state: updatedState ?? undefined,
+					state: updatedState as ProcessState,
 				},
 			});
 		} catch {
@@ -153,8 +154,8 @@ export default function processRoutes(db: ProcessDatabase) {
 				return c.json({ success: false, error: "Process not found" }, 404);
 			}
 
-			const state = db.getProcessState(id);
-			if (state?.status === ProcessStatus.RUNNING && state.pid) {
+			const state = db.getProcessState(id) as ProcessState;
+			if (state.status === ProcessStatus.RUNNING && state.pid) {
 				killFlake(state.pid);
 			}
 
@@ -180,9 +181,9 @@ export default function processRoutes(db: ProcessDatabase) {
 				return c.json({ success: false, error: "Process not found" }, 404);
 			}
 
-			const state = db.getProcessState(id);
+			const state = db.getProcessState(id) as ProcessState;
 			if (
-				state?.status === ProcessStatus.RUNNING &&
+				state.status === ProcessStatus.RUNNING &&
 				state.pid &&
 				isFlakeRunning(state.pid)
 			) {
@@ -200,7 +201,7 @@ export default function processRoutes(db: ProcessDatabase) {
 				success: true,
 				data: {
 					...(process as Process),
-					state: newState ?? undefined,
+					state: newState as ProcessState,
 				},
 			});
 		} catch {
@@ -222,15 +223,15 @@ export default function processRoutes(db: ProcessDatabase) {
 				return c.json({ success: false, error: "Process not found" }, 404);
 			}
 
-			const state = db.getProcessState(id);
-			if (state?.status === ProcessStatus.STOPPED) {
+			const state = db.getProcessState(id) as ProcessState;
+			if (state.status === ProcessStatus.STOPPED) {
 				return c.json(
 					{ success: false, error: "Process is already stopped" },
 					400,
 				);
 			}
 
-			if (state?.pid && isFlakeRunning(state.pid)) {
+			if (state.pid && isFlakeRunning(state.pid)) {
 				killFlake(state.pid);
 			}
 
@@ -241,7 +242,7 @@ export default function processRoutes(db: ProcessDatabase) {
 				success: true,
 				data: {
 					...(process as Process),
-					state: newState ?? undefined,
+					state: newState as ProcessState,
 				},
 			});
 		} catch {

@@ -17,7 +17,7 @@ export enum ProcessStatus {
 }
 
 export interface ProcessWithState extends Process {
-	state?: ProcessState;
+	state: ProcessState;
 }
 
 export interface ProcessInput {
