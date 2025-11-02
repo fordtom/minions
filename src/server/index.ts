@@ -8,12 +8,12 @@ const db = new ProcessDatabase();
 
 app.route("/api/processes", processRoutes(db));
 
-if (process.env.NODE_ENV === "production") {
+if (Bun.env.NODE_ENV === "production") {
 	app.use("/*", serveStatic({ root: "./dist/client" }));
 	app.get("*", serveStatic({ path: "./dist/client/index.html" }));
 }
 
-const port = process.env.PORT || 3000;
+const port = Number(Bun.env.PORT ?? 3000);
 console.log(`🚀 Server running on http://localhost:${port}`);
 
 export default {

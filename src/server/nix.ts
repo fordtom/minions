@@ -15,7 +15,7 @@ export function runFlake(
 		command.push(...parseArgs(args));
 	}
 
-	const env = { ...process.env };
+	const env = { ...Bun.env };
 
 	if (env_vars) {
 		Object.assign(env, parseEnvVars(env_vars));

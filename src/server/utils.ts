@@ -15,6 +15,14 @@ export function parseArgs(argsString: string | null | undefined): string[] {
 
 	const parsed = parseShellArgs(argsString);
 
-	// Filter to only string arguments (shell-quote can return objects for special syntax)
+	// Reject shell operators - they won't work in direct process spawn
+	for (const token of parsed) {
+		if (typeof token === "object" && "op" in token) {
+			throw new Error(
+				`Shell operators (${token.op}) are not supported. Use plain CLI arguments only.`,
+			);
+		}
+	}
+
 	return parsed.filter((arg): arg is string => typeof arg === "string");
 }
