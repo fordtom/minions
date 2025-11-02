@@ -1,14 +1,22 @@
-import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { ApiResponse, ProcessWithState } from "../../shared/types";
-import { MoreHorizontal } from "lucide-react";
+import {
+	MoreHorizontal,
+	PauseIcon,
+	PencilIcon,
+	PlayIcon,
+	Trash2Icon,
+} from "lucide-react";
+import * as React from "react";
+import {
+	type ApiResponse,
+	type ProcessWithState,
+	ProcessStatus,
+} from "../../shared/types";
 import { Button } from "../components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 
@@ -35,6 +43,7 @@ export const createColumns = (
 		id: "actions",
 		cell: ({ row }) => {
 			const id = row.original.id;
+			const isRunning = row.original.state.status === ProcessStatus.RUNNING;
 
 			const handleStart = async () => {
 				try {
@@ -93,16 +102,23 @@ export const createColumns = (
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
-						<DropdownMenuLabel>Actions</DropdownMenuLabel>
-						<DropdownMenuItem onClick={handleStart}>
-							Start process
+						{isRunning ? (
+							<DropdownMenuItem onClick={handleStop}>
+								<PauseIcon />
+								Stop process
+							</DropdownMenuItem>
+						) : (
+							<DropdownMenuItem onClick={handleStart}>
+								<PlayIcon />
+								Start process
+							</DropdownMenuItem>
+						)}
+						<DropdownMenuItem>
+							<PencilIcon />
+							Edit process
 						</DropdownMenuItem>
-						<DropdownMenuItem onClick={handleStop}>
-							Stop process
-						</DropdownMenuItem>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem>Edit process</DropdownMenuItem>
 						<DropdownMenuItem onClick={handleDelete}>
+							<Trash2Icon />
 							Delete process
 						</DropdownMenuItem>
 					</DropdownMenuContent>

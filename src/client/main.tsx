@@ -5,7 +5,7 @@ import "./index.css";
 import { DataTable } from "./overview/data-table";
 import { createColumns } from "./overview/columns";
 import type { ApiResponse, ProcessWithState } from "../shared/types";
-import { IconSnowflake } from "@tabler/icons-react";
+import { SnowflakeIcon } from "lucide-react";
 import { Button } from "./components/ui/button";
 import {
 	Empty,
@@ -15,11 +15,13 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from "./components/ui/empty";
+import { NewFlakeCard } from "./add-new";
 
 function App() {
 	const [data, setData] = useState<ProcessWithState[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [isNewOpen, setIsNewOpen] = useState(false);
 
 	const fetchData = useCallback(() => {
 		setLoading(true);
@@ -52,15 +54,23 @@ function App() {
 				<Empty>
 					<EmptyHeader>
 						<EmptyMedia variant="icon">
-							<IconSnowflake />
+							<SnowflakeIcon />
 						</EmptyMedia>
 						<EmptyTitle>No flakes yet</EmptyTitle>
 						<EmptyDescription>Get started by adding a flake.</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>
-						<Button>Add flake</Button>
+						<Button onClick={() => setIsNewOpen(true)}>Add flake</Button>
 					</EmptyContent>
 				</Empty>
+				<NewFlakeCard
+					open={isNewOpen}
+					onCancel={() => setIsNewOpen(false)}
+					onSaved={() => {
+						setIsNewOpen(false);
+						fetchData();
+					}}
+				/>
 			</div>
 		);
 	}
@@ -69,9 +79,17 @@ function App() {
 		<div className="container mx-auto py-10">
 			<div className="flex items-center justify-between mb-4">
 				<h1 className="text-2xl font-bold">Minions</h1>
-				<Button>Add flake</Button>
+				<Button onClick={() => setIsNewOpen(true)}>Add flake</Button>
 			</div>
 			<DataTable columns={columns} data={data} />
+			<NewFlakeCard
+				open={isNewOpen}
+				onCancel={() => setIsNewOpen(false)}
+				onSaved={() => {
+					setIsNewOpen(false);
+					fetchData();
+				}}
+			/>
 		</div>
 	);
 }
