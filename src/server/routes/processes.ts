@@ -1,10 +1,5 @@
 import { Hono } from "hono";
-import {
-	type Process,
-	type ProcessInput,
-	type ProcessState,
-	ProcessStatus,
-} from "../../shared/types";
+import { type ProcessInput, ProcessStatus } from "../../shared/types";
 import type { ProcessDatabase } from "../db";
 import { isFlakeRunning, killFlake, runFlake } from "../nix";
 
