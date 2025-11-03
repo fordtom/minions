@@ -1,10 +1,5 @@
 import { Hono } from "hono";
-import {
-	type Process,
-	type ProcessInput,
-	type ProcessState,
-	ProcessStatus,
-} from "../../shared/types";
+import { type ProcessInput, ProcessStatus } from "../../shared/types";
 import type { ProcessDatabase } from "../db";
 import { isFlakeRunning, killFlake, runFlake } from "../nix";
 
@@ -33,20 +28,15 @@ export default function processRoutes(db: ProcessDatabase) {
 				return c.json({ success: false, error: "Invalid ID" }, 400);
 			}
 
-			const process = db.getProcess(id);
+			const process = db.getProcessWithId(id);
 
 			if (!process) {
 				return c.json({ success: false, error: "Process not found" }, 404);
 			}
 
-			const state = db.getProcessState(id);
-
 			return c.json({
 				success: true,
-				data: {
-					...process,
-					state: state as ProcessState,
-				},
+				data: process,
 			});
 		} catch {
 			return c.json({ success: false, error: "Failed to fetch process" }, 500);
@@ -66,18 +56,15 @@ export default function processRoutes(db: ProcessDatabase) {
 				body.flake_url,
 				body.env_vars ?? null,
 				body.args ?? null,
+				body.name ?? null,
 			);
 
-			const process = db.getProcess(id);
-			const state = db.getProcessState(id);
+			const process = db.getProcessWithId(id);
 
 			return c.json(
 				{
 					success: true,
-					data: {
-						...(process as Process),
-						state: state as ProcessState,
-					},
+					data: process,
 				},
 				201,
 			);
@@ -101,14 +88,13 @@ export default function processRoutes(db: ProcessDatabase) {
 				return c.json({ success: false, error: "flake_url is required" }, 400);
 			}
 
-			const existing = db.getProcess(id);
+			const existing = db.getProcessWithId(id);
 			if (!existing) {
 				return c.json({ success: false, error: "Process not found" }, 404);
 			}
 
 			// Don't allow updates while running
-			const state = db.getProcessState(id) as ProcessState;
-			if (state.status === ProcessStatus.RUNNING) {
+			if (existing.state.status === ProcessStatus.RUNNING) {
 				return c.json(
 					{
 						success: false,
@@ -123,17 +109,14 @@ export default function processRoutes(db: ProcessDatabase) {
 				body.flake_url,
 				body.env_vars ?? null,
 				body.args ?? null,
+				body.name ?? null,
 			);
 
-			const updated = db.getProcess(id);
-			const updatedState = db.getProcessState(id);
+			const updated = db.getProcessWithId(id);
 
 			return c.json({
 				success: true,
-				data: {
-					...(updated as Process),
-					state: updatedState as ProcessState,
-				},
+				data: updated,
 			});
 		} catch {
 			return c.json({ success: false, error: "Failed to update process" }, 500);
@@ -149,14 +132,13 @@ export default function processRoutes(db: ProcessDatabase) {
 				return c.json({ success: false, error: "Invalid ID" }, 400);
 			}
 
-			const process = db.getProcess(id);
+			const process = db.getProcessWithId(id);
 			if (!process) {
 				return c.json({ success: false, error: "Process not found" }, 404);
 			}
 
-			const state = db.getProcessState(id) as ProcessState;
-			if (state.status === ProcessStatus.RUNNING && state.pid) {
-				killFlake(state.pid);
+			if (process.state.status === ProcessStatus.RUNNING && process.state.pid) {
+				killFlake(process.state.pid);
 			}
 
 			db.deleteProcess(id);
@@ -176,16 +158,15 @@ export default function processRoutes(db: ProcessDatabase) {
 				return c.json({ success: false, error: "Invalid ID" }, 400);
 			}
 
-			const process = db.getProcess(id);
+			const process = db.getProcessWithId(id);
 			if (!process) {
 				return c.json({ success: false, error: "Process not found" }, 404);
 			}
 
-			const state = db.getProcessState(id) as ProcessState;
 			if (
-				state.status === ProcessStatus.RUNNING &&
-				state.pid &&
-				isFlakeRunning(state.pid)
+				process.state.status === ProcessStatus.RUNNING &&
+				process.state.pid &&
+				isFlakeRunning(process.state.pid)
 			) {
 				return c.json(
 					{ success: false, error: "Process is already running" },
@@ -195,14 +176,12 @@ export default function processRoutes(db: ProcessDatabase) {
 
 			const pid = runFlake(process.flake_url, process.env_vars, process.args);
 			db.upsertProcessState(id, pid, ProcessStatus.RUNNING);
-			const newState = db.getProcessState(id);
+
+			const updated = db.getProcessWithId(id);
 
 			return c.json({
 				success: true,
-				data: {
-					...(process as Process),
-					state: newState as ProcessState,
-				},
+				data: updated,
 			});
 		} catch {
 			return c.json({ success: false, error: "Failed to start process" }, 500);
@@ -218,12 +197,12 @@ export default function processRoutes(db: ProcessDatabase) {
 				return c.json({ success: false, error: "Invalid ID" }, 400);
 			}
 
-			const process = db.getProcess(id);
+			const process = db.getProcessWithId(id);
 			if (!process) {
 				return c.json({ success: false, error: "Process not found" }, 404);
 			}
 
-			const state = db.getProcessState(id) as ProcessState;
+			const state = process.state;
 			if (state.status === ProcessStatus.STOPPED) {
 				return c.json(
 					{ success: false, error: "Process is already stopped" },
@@ -236,14 +215,12 @@ export default function processRoutes(db: ProcessDatabase) {
 			}
 
 			db.upsertProcessState(id, null, ProcessStatus.STOPPED);
-			const newState = db.getProcessState(id);
+
+			const updated = db.getProcessWithId(id);
 
 			return c.json({
 				success: true,
-				data: {
-					...(process as Process),
-					state: newState as ProcessState,
-				},
+				data: updated,
 			});
 		} catch {
 			return c.json({ success: false, error: "Failed to stop process" }, 500);

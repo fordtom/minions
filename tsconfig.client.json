@@ -1,12 +1,13 @@
 {
-	"extends": "./tsconfig.json",
-	"compilerOptions": {
-		"lib": ["ESNext", "DOM", "DOM.Iterable"],
-		"jsx": "react-jsx",
-		"baseUrl": ".",
-		"paths": {
-			"@/*": ["./src/client/*"]
-		}
-	},
-	"include": ["src/client/**/*", "src/shared/**/*"]
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/client/*"]
+    },
+    "strictNullChecks": true
+  },
+  "include": ["src/client/**/*", "src/shared/**/*"]
 }

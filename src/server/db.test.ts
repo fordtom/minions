@@ -12,28 +12,30 @@ describe("ProcessDatabase", () => {
 
 	describe("Process CRUD operations", () => {
 		test("createProcess - creates a new process", () => {
-			const id = db.createProcess("github:foo/bar#baz", '{"KEY":"val"}', "--flag");
+			const id = db.createProcess("github:foo/bar#baz", '{"KEY":"val"}', "--flag", "test-process");
 			expect(id).toBeGreaterThan(0);
 
 			const process = db.getProcess(id);
-			expect(process).toEqual({
-				id,
-				flake_url: "github:foo/bar#baz",
-				env_vars: '{"KEY":"val"}',
-				args: "--flag",
-			});
+			expect(process?.id).toBe(id);
+			expect(process?.name).toBe("test-process");
+			expect(process?.flake_url).toBe("github:foo/bar#baz");
+			expect(process?.env_vars).toBe('{"KEY":"val"}');
+			expect(process?.args).toBe("--flag");
+			expect(process?.created_at).toBeGreaterThan(0);
+			expect(process?.updated_at).toBeGreaterThan(0);
 		});
 
 		test("createProcess - creates process with null optional fields", () => {
 			const id = db.createProcess("github:foo/bar#baz");
 			const process = db.getProcess(id);
 
-			expect(process).toEqual({
-				id,
-				flake_url: "github:foo/bar#baz",
-				env_vars: null,
-				args: null,
-			});
+			expect(process?.id).toBe(id);
+			expect(process?.name).toBeNull();
+			expect(process?.flake_url).toBe("github:foo/bar#baz");
+			expect(process?.env_vars).toBeNull();
+			expect(process?.args).toBeNull();
+			expect(process?.created_at).toBeGreaterThan(0);
+			expect(process?.updated_at).toBeGreaterThan(0);
 		});
 
 		test("getProcess - returns null for non-existent id", () => {
@@ -58,15 +60,22 @@ describe("ProcessDatabase", () => {
 
 		test("updateProcess - updates existing process", () => {
 			const id = db.createProcess("github:foo/bar#baz");
-			db.updateProcess(id, "github:new/url#flake", '{"NEW":"env"}', "--new-arg");
+			const original = db.getProcess(id);
+			const originalUpdatedAt = original?.updated_at;
+
+			// Wait a bit to ensure updated_at changes
+			const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+			wait(10);
+
+			db.updateProcess(id, "github:new/url#flake", '{"NEW":"env"}', "--new-arg", "updated-name");
 
 			const process = db.getProcess(id);
-			expect(process).toEqual({
-				id,
-				flake_url: "github:new/url#flake",
-				env_vars: '{"NEW":"env"}',
-				args: "--new-arg",
-			});
+			expect(process?.id).toBe(id);
+			expect(process?.name).toBe("updated-name");
+			expect(process?.flake_url).toBe("github:new/url#flake");
+			expect(process?.env_vars).toBe('{"NEW":"env"}');
+			expect(process?.args).toBe("--new-arg");
+			expect(process?.updated_at).toBeGreaterThanOrEqual(originalUpdatedAt!);
 		});
 
 		test("deleteProcess - removes process", () => {
@@ -83,36 +92,33 @@ describe("ProcessDatabase", () => {
 			const id = db.createProcess("github:foo/bar#baz");
 			const state = db.getProcessState(id);
 
-			expect(state).toEqual({
-				process_id: id,
-				pid: null,
-				status: ProcessStatus.STOPPED,
-			});
+			expect(state?.process_id).toBe(id);
+			expect(state?.pid).toBeNull();
+			expect(state?.status).toBe(ProcessStatus.STOPPED);
+			expect(state?.started_at).toBeNull();
 		});
 
-		test("upsertProcessState - creates/updates state", () => {
+		test("upsertProcessState - creates/updates state with started_at when RUNNING", () => {
 			const id = db.createProcess("github:foo/bar#baz");
 			db.upsertProcessState(id, 12345, ProcessStatus.RUNNING);
 
 			const state = db.getProcessState(id);
-			expect(state).toEqual({
-				process_id: id,
-				pid: 12345,
-				status: ProcessStatus.RUNNING,
-			});
+			expect(state?.process_id).toBe(id);
+			expect(state?.pid).toBe(12345);
+			expect(state?.status).toBe(ProcessStatus.RUNNING);
+			expect(state?.started_at).toBeGreaterThan(0);
 		});
 
-		test("upsertProcessState - updates existing state", () => {
+		test("upsertProcessState - updates existing state with null started_at when STOPPED", () => {
 			const id = db.createProcess("github:foo/bar#baz");
 			db.upsertProcessState(id, 12345, ProcessStatus.RUNNING);
 			db.upsertProcessState(id, null, ProcessStatus.STOPPED);
 
 			const state = db.getProcessState(id);
-			expect(state).toEqual({
-				process_id: id,
-				pid: null,
-				status: ProcessStatus.STOPPED,
-			});
+			expect(state?.process_id).toBe(id);
+			expect(state?.pid).toBeNull();
+			expect(state?.status).toBe(ProcessStatus.STOPPED);
+			expect(state?.started_at).toBeNull();
 		});
 
 		test("getProcessState - returns null for non-existent process", () => {
@@ -130,37 +136,65 @@ describe("ProcessDatabase", () => {
 		});
 	});
 
+	describe("getProcessWithId", () => {
+		test("returns process with state", () => {
+			const id = db.createProcess("github:foo/bar#baz", '{"KEY":"val"}', "--flag", "test-process");
+			db.upsertProcessState(id, 111, ProcessStatus.RUNNING);
+
+			const result = db.getProcessWithId(id);
+			expect(result).not.toBeNull();
+			expect(result?.id).toBe(id);
+			expect(result?.name).toBe("test-process");
+			expect(result?.flake_url).toBe("github:foo/bar#baz");
+			expect(result?.env_vars).toBe('{"KEY":"val"}');
+			expect(result?.args).toBe("--flag");
+			expect(result?.created_at).toBeGreaterThan(0);
+			expect(result?.updated_at).toBeGreaterThan(0);
+			expect(result?.state.process_id).toBe(id);
+			expect(result?.state.pid).toBe(111);
+			expect(result?.state.status).toBe(ProcessStatus.RUNNING);
+			expect(result?.state.started_at).toBeGreaterThan(0);
+		});
+
+		test("returns null for non-existent process", () => {
+			const result = db.getProcessWithId(999);
+			expect(result).toBeNull();
+		});
+	});
+
 	describe("listProcessesWithState", () => {
 		test("returns processes with their state", () => {
-			const id1 = db.createProcess("github:foo/bar#baz");
-			const id2 = db.createProcess("github:my/test#flake");
+			const id1 = db.createProcess("github:foo/bar#baz", null, null, "process-1");
+			const id2 = db.createProcess("github:my/test#flake", null, null, "process-2");
 			db.upsertProcessState(id1, 111, ProcessStatus.RUNNING);
-			db.upsertProcessState(id2, 222, ProcessStatus.STOPPED);
+			db.upsertProcessState(id2, null, ProcessStatus.STOPPED);
 
 			const result = db.listProcessesWithState();
 			expect(result).toHaveLength(2);
-			expect(result[0]).toEqual({
-				id: id1,
-				flake_url: "github:foo/bar#baz",
-				env_vars: null,
-				args: null,
-				state: {
-					process_id: id1,
-					pid: 111,
-					status: ProcessStatus.RUNNING,
-				},
-			});
-			expect(result[1]).toEqual({
-				id: id2,
-				flake_url: "github:my/test#flake",
-				env_vars: null,
-				args: null,
-				state: {
-					process_id: id2,
-					pid: 222,
-					status: ProcessStatus.STOPPED,
-				},
-			});
+			
+			expect(result[0].id).toBe(id1);
+			expect(result[0].name).toBe("process-1");
+			expect(result[0].flake_url).toBe("github:foo/bar#baz");
+			expect(result[0].env_vars).toBeNull();
+			expect(result[0].args).toBeNull();
+			expect(result[0].created_at).toBeGreaterThan(0);
+			expect(result[0].updated_at).toBeGreaterThan(0);
+			expect(result[0].state.process_id).toBe(id1);
+			expect(result[0].state.pid).toBe(111);
+			expect(result[0].state.status).toBe(ProcessStatus.RUNNING);
+			expect(result[0].state.started_at).toBeGreaterThan(0);
+			
+			expect(result[1].id).toBe(id2);
+			expect(result[1].name).toBe("process-2");
+			expect(result[1].flake_url).toBe("github:my/test#flake");
+			expect(result[1].env_vars).toBeNull();
+			expect(result[1].args).toBeNull();
+			expect(result[1].created_at).toBeGreaterThan(0);
+			expect(result[1].updated_at).toBeGreaterThan(0);
+			expect(result[1].state.process_id).toBe(id2);
+			expect(result[1].state.pid).toBeNull();
+			expect(result[1].state.status).toBe(ProcessStatus.STOPPED);
+			expect(result[1].state.started_at).toBeNull();
 		});
 
 		test("returns empty array when no processes", () => {

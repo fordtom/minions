@@ -1,9 +1,10 @@
 {
-	"extends": "./tsconfig.json",
-	"compilerOptions": {
-		"types": ["bun-types"],
-		"noEmit": false,
-		"outDir": "./dist/server"
-	},
-	"include": ["src/server/**/*", "src/shared/**/*"]
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["bun-types"],
+    "noEmit": false,
+    "outDir": "./dist/server",
+    "strictNullChecks": true
+  },
+  "include": ["src/server/**/*", "src/shared/**/*"]
 }
