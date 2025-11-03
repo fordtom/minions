@@ -99,8 +99,7 @@ export default function processRoutes(db: ProcessDatabase) {
 			}
 
 			// Don't allow updates while running
-			const state = existing.state;
-			if (state.status === ProcessStatus.RUNNING) {
+			if (existing.state.status === ProcessStatus.RUNNING) {
 				return c.json(
 					{
 						success: false,
@@ -143,9 +142,8 @@ export default function processRoutes(db: ProcessDatabase) {
 				return c.json({ success: false, error: "Process not found" }, 404);
 			}
 
-			const state = process.state;
-			if (state.status === ProcessStatus.RUNNING && state.pid) {
-				killFlake(state.pid);
+			if (process.state.status === ProcessStatus.RUNNING && process.state.pid) {
+				killFlake(process.state.pid);
 			}
 
 			db.deleteProcess(id);
@@ -170,11 +168,10 @@ export default function processRoutes(db: ProcessDatabase) {
 				return c.json({ success: false, error: "Process not found" }, 404);
 			}
 
-			const state = process.state;
 			if (
-				state.status === ProcessStatus.RUNNING &&
-				state.pid &&
-				isFlakeRunning(state.pid)
+				process.state.status === ProcessStatus.RUNNING &&
+				process.state.pid &&
+				isFlakeRunning(process.state.pid)
 			) {
 				return c.json(
 					{ success: false, error: "Process is already running" },
