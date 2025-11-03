@@ -14,7 +14,7 @@ export default function processRoutes(db: ProcessDatabase) {
 		} catch {
 			return c.json(
 				{ success: false, error: "Failed to fetch processes" },
-				500,
+				500
 			);
 		}
 	});
@@ -22,7 +22,7 @@ export default function processRoutes(db: ProcessDatabase) {
 	// GET /api/processes/:id - Get single process with state
 	app.get("/:id", (c) => {
 		try {
-			const id = parseInt(c.req.param("id"), 10);
+			const id = Number.parseInt(c.req.param("id"), 10);
 
 			if (Number.isNaN(id)) {
 				return c.json({ success: false, error: "Invalid ID" }, 400);
@@ -56,7 +56,7 @@ export default function processRoutes(db: ProcessDatabase) {
 				body.flake_url,
 				body.env_vars ?? null,
 				body.args ?? null,
-				body.name ?? null,
+				body.name ?? null
 			);
 
 			const process = db.getProcessWithId(id);
@@ -66,7 +66,7 @@ export default function processRoutes(db: ProcessDatabase) {
 					success: true,
 					data: process,
 				},
-				201,
+				201
 			);
 		} catch {
 			return c.json({ success: false, error: "Failed to create process" }, 500);
@@ -76,7 +76,7 @@ export default function processRoutes(db: ProcessDatabase) {
 	// PUT /api/processes/:id - Update process
 	app.put("/:id", async (c) => {
 		try {
-			const id = parseInt(c.req.param("id"), 10);
+			const id = Number.parseInt(c.req.param("id"), 10);
 
 			if (Number.isNaN(id)) {
 				return c.json({ success: false, error: "Invalid ID" }, 400);
@@ -100,7 +100,7 @@ export default function processRoutes(db: ProcessDatabase) {
 						success: false,
 						error: "Cannot update running process. Stop it first.",
 					},
-					400,
+					400
 				);
 			}
 
@@ -109,7 +109,7 @@ export default function processRoutes(db: ProcessDatabase) {
 				body.flake_url,
 				body.env_vars ?? null,
 				body.args ?? null,
-				body.name ?? null,
+				body.name ?? null
 			);
 
 			const updated = db.getProcessWithId(id);
@@ -124,9 +124,9 @@ export default function processRoutes(db: ProcessDatabase) {
 	});
 
 	// DELETE /api/processes/:id - Delete process
-	app.delete("/:id", (c) => {
+	app.delete("/:id", async (c) => {
 		try {
-			const id = parseInt(c.req.param("id"), 10);
+			const id = Number.parseInt(c.req.param("id"), 10);
 
 			if (Number.isNaN(id)) {
 				return c.json({ success: false, error: "Invalid ID" }, 400);
@@ -138,7 +138,7 @@ export default function processRoutes(db: ProcessDatabase) {
 			}
 
 			if (process.state.status === ProcessStatus.RUNNING && process.state.pid) {
-				killFlake(process.state.pid);
+				await killFlake(process.state.pid);
 			}
 
 			db.deleteProcess(id);
@@ -150,9 +150,9 @@ export default function processRoutes(db: ProcessDatabase) {
 	});
 
 	// POST /api/processes/:id/start - Start process
-	app.post("/:id/start", (c) => {
+	app.post("/:id/start", async (c) => {
 		try {
-			const id = parseInt(c.req.param("id"), 10);
+			const id = Number.parseInt(c.req.param("id"), 10);
 
 			if (Number.isNaN(id)) {
 				return c.json({ success: false, error: "Invalid ID" }, 400);
@@ -170,7 +170,7 @@ export default function processRoutes(db: ProcessDatabase) {
 			) {
 				return c.json(
 					{ success: false, error: "Process is already running" },
-					400,
+					400
 				);
 			}
 
@@ -189,9 +189,9 @@ export default function processRoutes(db: ProcessDatabase) {
 	});
 
 	// POST /api/processes/:id/stop - Stop process
-	app.post("/:id/stop", (c) => {
+	app.post("/:id/stop", async (c) => {
 		try {
-			const id = parseInt(c.req.param("id"), 10);
+			const id = Number.parseInt(c.req.param("id"), 10);
 
 			if (Number.isNaN(id)) {
 				return c.json({ success: false, error: "Invalid ID" }, 400);
@@ -206,12 +206,12 @@ export default function processRoutes(db: ProcessDatabase) {
 			if (state.status === ProcessStatus.STOPPED) {
 				return c.json(
 					{ success: false, error: "Process is already stopped" },
-					400,
+					400
 				);
 			}
 
 			if (state.pid && isFlakeRunning(state.pid)) {
-				killFlake(state.pid);
+				await killFlake(state.pid);
 			}
 
 			db.upsertProcessState(id, null, ProcessStatus.STOPPED);

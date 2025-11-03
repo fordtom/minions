@@ -42,16 +42,21 @@ export function runFlake(
 	return pid;
 }
 
-export function killFlake(pid: number): void {
+export async function killFlake(pid: number): Promise<void> {
 	const proc = activeProcesses.get(pid);
 
 	if (proc) {
 		proc.kill();
+		// Wait for the process to actually exit
+		await proc.exited;
 		activeProcesses.delete(pid);
 	} else {
+		// For processes not in our map, use Bun.$ for async kill
 		try {
-			process.kill(pid, "SIGTERM");
-		} catch {}
+			await Bun.$`kill -TERM ${pid}`.quiet();
+		} catch {
+			// Process may already be dead
+		}
 	}
 }
 
