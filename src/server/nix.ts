@@ -1,13 +1,21 @@
-import { spawn } from "bun";
 import type { Subprocess } from "bun";
-import { parseEnvVars, parseArgs } from "./utils";
+import { spawn } from "bun";
+import { parseArgs, parseEnvVars } from "./utils";
+
+declare const Bun: typeof globalThis.Bun;
 
 const activeProcesses = new Map<number, Subprocess>();
+
+const TERM_TIMEOUT_MS = 5000;
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export function runFlake(
 	flake_url: string,
 	env_vars?: string | null,
-	args?: string | null,
+	args?: string | null
 ): number {
 	const command = ["nix", "run", flake_url, "--"];
 
@@ -42,16 +50,47 @@ export function runFlake(
 	return pid;
 }
 
-export function killFlake(pid: number): void {
+export async function killFlake(pid: number): Promise<void> {
 	const proc = activeProcesses.get(pid);
 
 	if (proc) {
 		proc.kill();
+
+		const termCompleted = await Promise.race([
+			proc.exited.then(() => true).catch(() => true),
+			sleep(TERM_TIMEOUT_MS).then(() => false),
+		]);
+
+		if (!termCompleted) {
+			try {
+				proc.kill("SIGKILL");
+			} catch {
+				try {
+					await Bun.$`kill -KILL ${pid}`.quiet();
+				} catch {
+					/* ignore */
+				}
+			}
+		}
+
 		activeProcesses.delete(pid);
-	} else {
+		return;
+	}
+
+	try {
+		await Bun.$`kill -TERM ${pid}`.quiet();
+	} catch {
+		/* ignore */
+	}
+
+	await sleep(TERM_TIMEOUT_MS);
+
+	if (isFlakeRunning(pid)) {
 		try {
-			process.kill(pid, "SIGTERM");
-		} catch {}
+			await Bun.$`kill -KILL ${pid}`.quiet();
+		} catch {
+			/* ignore */
+		}
 	}
 }
 
