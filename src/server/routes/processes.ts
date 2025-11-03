@@ -3,6 +3,13 @@ import { type ProcessInput, ProcessStatus } from "../../shared/types";
 import type { ProcessDatabase } from "../db";
 import { isFlakeRunning, killFlake, runFlake } from "../nix";
 
+const HttpStatus = {
+	CREATED: 201,
+	BAD_REQUEST: 400,
+	NOT_FOUND: 404,
+	INTERNAL_SERVER_ERROR: 500,
+} as const;
+
 export default function processRoutes(db: ProcessDatabase) {
 	const app = new Hono();
 
@@ -14,7 +21,7 @@ export default function processRoutes(db: ProcessDatabase) {
 		} catch {
 			return c.json(
 				{ success: false, error: "Failed to fetch processes" },
-				500
+				HttpStatus.INTERNAL_SERVER_ERROR
 			);
 		}
 	});
@@ -25,13 +32,19 @@ export default function processRoutes(db: ProcessDatabase) {
 			const id = Number.parseInt(c.req.param("id"), 10);
 
 			if (Number.isNaN(id)) {
-				return c.json({ success: false, error: "Invalid ID" }, 400);
+				return c.json(
+					{ success: false, error: "Invalid ID" },
+					HttpStatus.BAD_REQUEST
+				);
 			}
 
 			const process = db.getProcessWithId(id);
 
 			if (!process) {
-				return c.json({ success: false, error: "Process not found" }, 404);
+				return c.json(
+					{ success: false, error: "Process not found" },
+					HttpStatus.NOT_FOUND
+				);
 			}
 
 			return c.json({
@@ -39,7 +52,10 @@ export default function processRoutes(db: ProcessDatabase) {
 				data: process,
 			});
 		} catch {
-			return c.json({ success: false, error: "Failed to fetch process" }, 500);
+			return c.json(
+				{ success: false, error: "Failed to fetch process" },
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
 		}
 	});
 
@@ -49,7 +65,10 @@ export default function processRoutes(db: ProcessDatabase) {
 			const body = await c.req.json<ProcessInput>();
 
 			if (!body.flake_url) {
-				return c.json({ success: false, error: "flake_url is required" }, 400);
+				return c.json(
+					{ success: false, error: "flake_url is required" },
+					HttpStatus.BAD_REQUEST
+				);
 			}
 
 			const id = db.createProcess(
@@ -66,10 +85,13 @@ export default function processRoutes(db: ProcessDatabase) {
 					success: true,
 					data: process,
 				},
-				201
+				HttpStatus.CREATED
 			);
 		} catch {
-			return c.json({ success: false, error: "Failed to create process" }, 500);
+			return c.json(
+				{ success: false, error: "Failed to create process" },
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
 		}
 	});
 
@@ -79,18 +101,27 @@ export default function processRoutes(db: ProcessDatabase) {
 			const id = Number.parseInt(c.req.param("id"), 10);
 
 			if (Number.isNaN(id)) {
-				return c.json({ success: false, error: "Invalid ID" }, 400);
+				return c.json(
+					{ success: false, error: "Invalid ID" },
+					HttpStatus.BAD_REQUEST
+				);
 			}
 
 			const body = await c.req.json<ProcessInput>();
 
 			if (!body.flake_url) {
-				return c.json({ success: false, error: "flake_url is required" }, 400);
+				return c.json(
+					{ success: false, error: "flake_url is required" },
+					HttpStatus.BAD_REQUEST
+				);
 			}
 
 			const existing = db.getProcessWithId(id);
 			if (!existing) {
-				return c.json({ success: false, error: "Process not found" }, 404);
+				return c.json(
+					{ success: false, error: "Process not found" },
+					HttpStatus.NOT_FOUND
+				);
 			}
 
 			// Don't allow updates while running
@@ -100,7 +131,7 @@ export default function processRoutes(db: ProcessDatabase) {
 						success: false,
 						error: "Cannot update running process. Stop it first.",
 					},
-					400
+					HttpStatus.BAD_REQUEST
 				);
 			}
 
@@ -119,7 +150,10 @@ export default function processRoutes(db: ProcessDatabase) {
 				data: updated,
 			});
 		} catch {
-			return c.json({ success: false, error: "Failed to update process" }, 500);
+			return c.json(
+				{ success: false, error: "Failed to update process" },
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
 		}
 	});
 
@@ -129,12 +163,18 @@ export default function processRoutes(db: ProcessDatabase) {
 			const id = Number.parseInt(c.req.param("id"), 10);
 
 			if (Number.isNaN(id)) {
-				return c.json({ success: false, error: "Invalid ID" }, 400);
+				return c.json(
+					{ success: false, error: "Invalid ID" },
+					HttpStatus.BAD_REQUEST
+				);
 			}
 
 			const process = db.getProcessWithId(id);
 			if (!process) {
-				return c.json({ success: false, error: "Process not found" }, 404);
+				return c.json(
+					{ success: false, error: "Process not found" },
+					HttpStatus.NOT_FOUND
+				);
 			}
 
 			if (process.state.status === ProcessStatus.RUNNING && process.state.pid) {
@@ -145,7 +185,10 @@ export default function processRoutes(db: ProcessDatabase) {
 
 			return c.json({ success: true, data: { id } });
 		} catch {
-			return c.json({ success: false, error: "Failed to delete process" }, 500);
+			return c.json(
+				{ success: false, error: "Failed to delete process" },
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
 		}
 	});
 
@@ -155,12 +198,18 @@ export default function processRoutes(db: ProcessDatabase) {
 			const id = Number.parseInt(c.req.param("id"), 10);
 
 			if (Number.isNaN(id)) {
-				return c.json({ success: false, error: "Invalid ID" }, 400);
+				return c.json(
+					{ success: false, error: "Invalid ID" },
+					HttpStatus.BAD_REQUEST
+				);
 			}
 
 			const process = db.getProcessWithId(id);
 			if (!process) {
-				return c.json({ success: false, error: "Process not found" }, 404);
+				return c.json(
+					{ success: false, error: "Process not found" },
+					HttpStatus.NOT_FOUND
+				);
 			}
 
 			if (
@@ -170,7 +219,7 @@ export default function processRoutes(db: ProcessDatabase) {
 			) {
 				return c.json(
 					{ success: false, error: "Process is already running" },
-					400
+					HttpStatus.BAD_REQUEST
 				);
 			}
 
@@ -184,7 +233,10 @@ export default function processRoutes(db: ProcessDatabase) {
 				data: updated,
 			});
 		} catch {
-			return c.json({ success: false, error: "Failed to start process" }, 500);
+			return c.json(
+				{ success: false, error: "Failed to start process" },
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
 		}
 	});
 
@@ -194,19 +246,25 @@ export default function processRoutes(db: ProcessDatabase) {
 			const id = Number.parseInt(c.req.param("id"), 10);
 
 			if (Number.isNaN(id)) {
-				return c.json({ success: false, error: "Invalid ID" }, 400);
+				return c.json(
+					{ success: false, error: "Invalid ID" },
+					HttpStatus.BAD_REQUEST
+				);
 			}
 
 			const process = db.getProcessWithId(id);
 			if (!process) {
-				return c.json({ success: false, error: "Process not found" }, 404);
+				return c.json(
+					{ success: false, error: "Process not found" },
+					HttpStatus.NOT_FOUND
+				);
 			}
 
 			const state = process.state;
 			if (state.status === ProcessStatus.STOPPED) {
 				return c.json(
 					{ success: false, error: "Process is already stopped" },
-					400
+					HttpStatus.BAD_REQUEST
 				);
 			}
 
@@ -223,7 +281,10 @@ export default function processRoutes(db: ProcessDatabase) {
 				data: updated,
 			});
 		} catch {
-			return c.json({ success: false, error: "Failed to stop process" }, 500);
+			return c.json(
+				{ success: false, error: "Failed to stop process" },
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
 		}
 	});
 
