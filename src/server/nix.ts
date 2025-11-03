@@ -5,52 +5,11 @@ import { parseEnvVars, parseArgs } from "./utils";
 const activeProcesses = new Map<number, Subprocess>();
 
 const TERM_TIMEOUT_MS = 5_000;
-const KILL_TIMEOUT_MS = 5_000;
-const EXIT_POLL_INTERVAL_MS = 100;
 
-function waitForExitWithTimeout(exitPromise: Promise<number>, timeoutMs: number): Promise<boolean> {
+function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => {
-		let settled = false;
-		const timeout = setTimeout(() => {
-			if (settled) {
-				return;
-			}
-			settled = true;
-			resolve(false);
-		}, timeoutMs);
-
-		exitPromise
-			.then(() => {
-				if (settled) {
-					return;
-				}
-				settled = true;
-				clearTimeout(timeout);
-				resolve(true);
-			})
-			.catch(() => {
-				if (settled) {
-					return;
-				}
-				settled = true;
-				clearTimeout(timeout);
-				resolve(true);
-			});
+		setTimeout(resolve, ms);
 	});
-}
-
-async function waitForPidExit(pid: number, timeoutMs: number): Promise<boolean> {
-	const deadline = Date.now() + timeoutMs;
-
-	while (Date.now() < deadline) {
-		if (!isFlakeRunning(pid)) {
-			return true;
-		}
-
-		await new Promise((resolve) => setTimeout(resolve, EXIT_POLL_INTERVAL_MS));
-	}
-
-	return !isFlakeRunning(pid);
 }
 
 export function runFlake(
@@ -96,9 +55,13 @@ export async function killFlake(pid: number): Promise<void> {
 
 	if (proc) {
 		proc.kill();
-		let exited = await waitForExitWithTimeout(proc.exited, TERM_TIMEOUT_MS);
 
-		if (!exited) {
+		const termCompleted = await Promise.race([
+			proc.exited.then(() => true).catch(() => true),
+			sleep(TERM_TIMEOUT_MS).then(() => false),
+		]);
+
+		if (!termCompleted) {
 			try {
 				proc.kill("SIGKILL");
 			} catch {
@@ -108,12 +71,6 @@ export async function killFlake(pid: number): Promise<void> {
 					// Ignore best-effort failure
 				}
 			}
-
-			exited = await waitForExitWithTimeout(proc.exited, KILL_TIMEOUT_MS);
-		}
-
-		if (exited) {
-			activeProcesses.delete(pid);
 		}
 		return;
 	}
@@ -124,9 +81,9 @@ export async function killFlake(pid: number): Promise<void> {
 		// Process may already be dead
 	}
 
-	const exitedAfterTerm = await waitForPidExit(pid, TERM_TIMEOUT_MS);
+	await sleep(TERM_TIMEOUT_MS);
 
-	if (exitedAfterTerm) {
+	if (!isFlakeRunning(pid)) {
 		return;
 	}
 
@@ -135,8 +92,6 @@ export async function killFlake(pid: number): Promise<void> {
 	} catch {
 		// Ignore best-effort failure
 	}
-
-	await waitForPidExit(pid, KILL_TIMEOUT_MS);
 }
 
 export function isFlakeRunning(pid: number): boolean {
