@@ -1,14 +1,18 @@
 export interface Process {
 	id: number;
+	name: string | null;
 	flake_url: string;
 	env_vars: string | null;
 	args: string | null;
+	created_at: number;
+	updated_at: number;
 }
 
 export interface ProcessState {
 	process_id: number;
 	pid: number | null;
 	status: ProcessStatus;
+	started_at: number | null;
 }
 
 export enum ProcessStatus {
@@ -21,6 +25,7 @@ export interface ProcessWithState extends Process {
 }
 
 export interface ProcessInput {
+	name?: string | null;
 	flake_url: string;
 	env_vars?: string | null;
 	args?: string | null;
