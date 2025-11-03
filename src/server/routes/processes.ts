@@ -150,7 +150,7 @@ export default function processRoutes(db: ProcessDatabase) {
 	});
 
 	// POST /api/processes/:id/start - Start process
-	app.post("/:id/start", async (c) => {
+	app.post("/:id/start", (c) => {
 		try {
 			const id = Number.parseInt(c.req.param("id"), 10);
 
