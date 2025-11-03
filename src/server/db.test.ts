@@ -1,6 +1,6 @@
-import { describe, expect, test, beforeEach } from "bun:test";
-import { ProcessDatabase } from "./db";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { ProcessStatus } from "../shared/types";
+import { ProcessDatabase } from "./db";
 
 describe("ProcessDatabase", () => {
 	let db: ProcessDatabase;
@@ -12,7 +12,12 @@ describe("ProcessDatabase", () => {
 
 	describe("Process CRUD operations", () => {
 		test("createProcess - creates a new process", () => {
-			const id = db.createProcess("github:foo/bar#baz", '{"KEY":"val"}', "--flag", "test-process");
+			const id = db.createProcess(
+				"github:foo/bar#baz",
+				'{"KEY":"val"}',
+				"--flag",
+				"test-process"
+			);
 			expect(id).toBeGreaterThan(0);
 
 			const process = db.getProcess(id);
@@ -64,10 +69,17 @@ describe("ProcessDatabase", () => {
 			const originalUpdatedAt = original?.updated_at;
 
 			// Wait a bit to ensure updated_at changes
-			const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+			const wait = (ms: number) =>
+				new Promise((resolve) => setTimeout(resolve, ms));
 			wait(10);
 
-			db.updateProcess(id, "github:new/url#flake", '{"NEW":"env"}', "--new-arg", "updated-name");
+			db.updateProcess(
+				id,
+				"github:new/url#flake",
+				'{"NEW":"env"}',
+				"--new-arg",
+				"updated-name"
+			);
 
 			const process = db.getProcess(id);
 			expect(process?.id).toBe(id);
@@ -100,18 +112,18 @@ describe("ProcessDatabase", () => {
 
 		test("upsertProcessState - creates/updates state with started_at when RUNNING", () => {
 			const id = db.createProcess("github:foo/bar#baz");
-			db.upsertProcessState(id, 12345, ProcessStatus.RUNNING);
+			db.upsertProcessState(id, 12_345, ProcessStatus.RUNNING);
 
 			const state = db.getProcessState(id);
 			expect(state?.process_id).toBe(id);
-			expect(state?.pid).toBe(12345);
+			expect(state?.pid).toBe(12_345);
 			expect(state?.status).toBe(ProcessStatus.RUNNING);
 			expect(state?.started_at).toBeGreaterThan(0);
 		});
 
 		test("upsertProcessState - updates existing state with null started_at when STOPPED", () => {
 			const id = db.createProcess("github:foo/bar#baz");
-			db.upsertProcessState(id, 12345, ProcessStatus.RUNNING);
+			db.upsertProcessState(id, 12_345, ProcessStatus.RUNNING);
 			db.upsertProcessState(id, null, ProcessStatus.STOPPED);
 
 			const state = db.getProcessState(id);
@@ -128,7 +140,7 @@ describe("ProcessDatabase", () => {
 
 		test("deleteProcess - cascades to process_state", () => {
 			const id = db.createProcess("github:foo/bar#baz");
-			db.upsertProcessState(id, 12345, ProcessStatus.RUNNING);
+			db.upsertProcessState(id, 12_345, ProcessStatus.RUNNING);
 			db.deleteProcess(id);
 
 			const state = db.getProcessState(id);
@@ -138,7 +150,12 @@ describe("ProcessDatabase", () => {
 
 	describe("getProcessWithId", () => {
 		test("returns process with state", () => {
-			const id = db.createProcess("github:foo/bar#baz", '{"KEY":"val"}', "--flag", "test-process");
+			const id = db.createProcess(
+				"github:foo/bar#baz",
+				'{"KEY":"val"}',
+				"--flag",
+				"test-process"
+			);
 			db.upsertProcessState(id, 111, ProcessStatus.RUNNING);
 
 			const result = db.getProcessWithId(id);
@@ -164,14 +181,24 @@ describe("ProcessDatabase", () => {
 
 	describe("listProcessesWithState", () => {
 		test("returns processes with their state", () => {
-			const id1 = db.createProcess("github:foo/bar#baz", null, null, "process-1");
-			const id2 = db.createProcess("github:my/test#flake", null, null, "process-2");
+			const id1 = db.createProcess(
+				"github:foo/bar#baz",
+				null,
+				null,
+				"process-1"
+			);
+			const id2 = db.createProcess(
+				"github:my/test#flake",
+				null,
+				null,
+				"process-2"
+			);
 			db.upsertProcessState(id1, 111, ProcessStatus.RUNNING);
 			db.upsertProcessState(id2, null, ProcessStatus.STOPPED);
 
 			const result = db.listProcessesWithState();
 			expect(result).toHaveLength(2);
-			
+
 			expect(result[0].id).toBe(id1);
 			expect(result[0].name).toBe("process-1");
 			expect(result[0].flake_url).toBe("github:foo/bar#baz");
@@ -183,7 +210,7 @@ describe("ProcessDatabase", () => {
 			expect(result[0].state.pid).toBe(111);
 			expect(result[0].state.status).toBe(ProcessStatus.RUNNING);
 			expect(result[0].state.started_at).toBeGreaterThan(0);
-			
+
 			expect(result[1].id).toBe(id2);
 			expect(result[1].name).toBe("process-2");
 			expect(result[1].flake_url).toBe("github:my/test#flake");

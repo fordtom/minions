@@ -3,7 +3,7 @@ import { parse as parseShellArgs } from "shell-quote";
 
 // Parse environment variables from dotenv format
 export function parseEnvVars(
-	envString: string | null | undefined,
+	envString: string | null | undefined
 ): Record<string, string> {
 	if (!envString?.trim()) return {};
 	return parseDotenv(envString);
@@ -19,7 +19,7 @@ export function parseArgs(argsString: string | null | undefined): string[] {
 	for (const token of parsed) {
 		if (typeof token === "object" && "op" in token) {
 			throw new Error(
-				`Shell operators (${token.op}) are not supported. Use plain CLI arguments only.`,
+				`Shell operators (${token.op}) are not supported. Use plain CLI arguments only.`
 			);
 		}
 	}

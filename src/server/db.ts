@@ -23,7 +23,7 @@ interface ProcessWithStateRow {
 export class ProcessDatabase {
 	private db: Database;
 
-	constructor(path: string = "minions.db") {
+	constructor(path = "minions.db") {
 		this.db = new Database(path);
 		this.db.run("PRAGMA foreign_keys = ON");
 		this.initSchema();
@@ -81,15 +81,19 @@ export class ProcessDatabase {
 		}
 		if (!hasCreatedAt) {
 			this.db.run(
-				"ALTER TABLE processes ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0",
+				"ALTER TABLE processes ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0"
 			);
-			this.db.run(`UPDATE processes SET created_at = ${now} WHERE created_at = 0`);
+			this.db.run(
+				`UPDATE processes SET created_at = ${now} WHERE created_at = 0`
+			);
 		}
 		if (!hasUpdatedAt) {
 			this.db.run(
-				"ALTER TABLE processes ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0",
+				"ALTER TABLE processes ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0"
 			);
-			this.db.run(`UPDATE processes SET updated_at = ${now} WHERE updated_at = 0`);
+			this.db.run(
+				`UPDATE processes SET updated_at = ${now} WHERE updated_at = 0`
+			);
 		}
 
 		// Check if started_at column exists in process_state
@@ -111,11 +115,11 @@ export class ProcessDatabase {
 		flake_url: string,
 		env_vars?: string | null,
 		args?: string | null,
-		name?: string | null,
+		name?: string | null
 	): number {
 		const now = Date.now();
 		const stmt = this.db.prepare(
-			"INSERT INTO processes (name, flake_url, env_vars, args, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+			"INSERT INTO processes (name, flake_url, env_vars, args, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
 		);
 		const result = stmt.run(
 			name ?? null,
@@ -123,21 +127,21 @@ export class ProcessDatabase {
 			env_vars ?? null,
 			args ?? null,
 			now,
-			now,
+			now
 		);
 		return result.lastInsertRowid as number;
 	}
 
 	getProcess(id: number): Process | null {
 		const stmt = this.db.prepare(
-			"SELECT id, name, flake_url, env_vars, args, created_at, updated_at FROM processes WHERE id = ?",
+			"SELECT id, name, flake_url, env_vars, args, created_at, updated_at FROM processes WHERE id = ?"
 		);
 		return stmt.get(id) as Process | null;
 	}
 
 	listProcesses(): Process[] {
 		const stmt = this.db.prepare(
-			"SELECT id, name, flake_url, env_vars, args, created_at, updated_at FROM processes",
+			"SELECT id, name, flake_url, env_vars, args, created_at, updated_at FROM processes"
 		);
 		return stmt.all() as Process[];
 	}
@@ -147,11 +151,11 @@ export class ProcessDatabase {
 		flake_url: string,
 		env_vars?: string | null,
 		args?: string | null,
-		name?: string | null,
+		name?: string | null
 	): void {
 		const now = Date.now();
 		const stmt = this.db.prepare(
-			"UPDATE processes SET name = ?, flake_url = ?, env_vars = ?, args = ?, updated_at = ? WHERE id = ?",
+			"UPDATE processes SET name = ?, flake_url = ?, env_vars = ?, args = ?, updated_at = ? WHERE id = ?"
 		);
 		stmt.run(name ?? null, flake_url, env_vars ?? null, args ?? null, now, id);
 	}
@@ -164,18 +168,18 @@ export class ProcessDatabase {
 	upsertProcessState(
 		process_id: number,
 		pid: number | null,
-		status: ProcessStatus,
+		status: ProcessStatus
 	): void {
 		const started_at = status === "RUNNING" ? Date.now() : null;
 		const stmt = this.db.prepare(
-			"INSERT OR REPLACE INTO process_state (process_id, pid, status, started_at) VALUES (?, ?, ?, ?)",
+			"INSERT OR REPLACE INTO process_state (process_id, pid, status, started_at) VALUES (?, ?, ?, ?)"
 		);
 		stmt.run(process_id, pid, status, started_at);
 	}
 
 	getProcessState(process_id: number): ProcessState | null {
 		const stmt = this.db.prepare(
-			"SELECT process_id, pid, status, started_at FROM process_state WHERE process_id = ?",
+			"SELECT process_id, pid, status, started_at FROM process_state WHERE process_id = ?"
 		);
 		return stmt.get(process_id) as ProcessState | null;
 	}

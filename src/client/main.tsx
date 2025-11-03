@@ -2,10 +2,9 @@ import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { DataTable } from "./overview/data-table";
-import { createColumns } from "./overview/columns";
-import type { ApiResponse, ProcessWithState } from "../shared/types";
 import { SnowflakeIcon } from "lucide-react";
+import type { ApiResponse, ProcessWithState } from "../shared/types";
+import { NewFlakeCard } from "./add-new";
 import { Button } from "./components/ui/button";
 import {
 	Empty,
@@ -15,7 +14,8 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from "./components/ui/empty";
-import { NewFlakeCard } from "./add-new";
+import { createColumns } from "./overview/columns";
+import { DataTable } from "./overview/data-table";
 
 function App() {
 	const [data, setData] = useState<ProcessWithState[]>([]);
@@ -64,12 +64,12 @@ function App() {
 					</EmptyContent>
 				</Empty>
 				<NewFlakeCard
-					open={isNewOpen}
 					onCancel={() => setIsNewOpen(false)}
 					onSaved={() => {
 						setIsNewOpen(false);
 						fetchData();
 					}}
+					open={isNewOpen}
 				/>
 			</div>
 		);
@@ -77,18 +77,18 @@ function App() {
 
 	return (
 		<div className="container mx-auto py-10">
-			<div className="flex items-center justify-between mb-4">
-				<h1 className="text-2xl font-bold">Minions</h1>
+			<div className="mb-4 flex items-center justify-between">
+				<h1 className="font-bold text-2xl">Minions</h1>
 				<Button onClick={() => setIsNewOpen(true)}>Add flake</Button>
 			</div>
 			<DataTable columns={columns} data={data} />
 			<NewFlakeCard
-				open={isNewOpen}
 				onCancel={() => setIsNewOpen(false)}
 				onSaved={() => {
 					setIsNewOpen(false);
 					fetchData();
 				}}
+				open={isNewOpen}
 			/>
 		</div>
 	);

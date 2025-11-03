@@ -28,7 +28,8 @@ describe("parseArgs", () => {
 	});
 
 	it("handles quoted arguments and escapes", () => {
-		const argsString = "run-task \"quoted arg\" 'single quoted' escaped\\ space";
+		const argsString =
+			"run-task \"quoted arg\" 'single quoted' escaped\\ space";
 		expect(parseArgs(argsString)).toEqual([
 			"run-task",
 			"quoted arg",
@@ -39,10 +40,10 @@ describe("parseArgs", () => {
 
 	it("rejects shell operators with clear error", () => {
 		expect(() => parseArgs("foo | grep bar")).toThrow(
-			"Shell operators (|) are not supported",
+			"Shell operators (|) are not supported"
 		);
 		expect(() => parseArgs("foo > out.txt")).toThrow(
-			"Shell operators (>) are not supported",
+			"Shell operators (>) are not supported"
 		);
 	});
 });

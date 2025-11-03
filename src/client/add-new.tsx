@@ -80,10 +80,10 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 
 	return (
 		<button
-			type="button"
-			className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4 cursor-default"
-			onClick={onCancel}
 			aria-label="Close modal"
+			className="fixed inset-0 z-50 grid cursor-default place-items-center bg-black/50 p-4"
+			onClick={onCancel}
+			type="button"
 		>
 			<Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
 				<form onSubmit={handleSubmit}>
@@ -98,70 +98,70 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 						<div className="flex flex-col gap-6">
 							<div className="grid gap-2">
 								<label
+									className="font-medium text-sm leading-none"
 									htmlFor="flake-url"
-									className="text-sm font-medium leading-none"
 								>
 									Flake URL
 								</label>
 								<input
+									className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 									id="flake-url"
+									onChange={(e) => setFlakeUrl(e.target.value)}
+									placeholder="nixpkgs#hello"
+									required
 									type="text"
 									value={flakeUrl}
-									onChange={(e) => setFlakeUrl(e.target.value)}
-									required
-									className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-									placeholder="nixpkgs#hello"
 								/>
 							</div>
 							<div className="grid gap-2">
 								<label
+									className="font-medium text-sm leading-none"
 									htmlFor="args"
-									className="text-sm font-medium leading-none"
 								>
 									Args
 								</label>
 								<input
+									className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 									id="args"
+									onChange={(e) => setArgs(e.target.value)}
+									placeholder="Optional CLI arguments"
 									type="text"
 									value={args}
-									onChange={(e) => setArgs(e.target.value)}
-									className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-									placeholder="Optional CLI arguments"
 								/>
 							</div>
 							<div className="grid gap-2">
 								<label
+									className="font-medium text-sm leading-none"
 									htmlFor="env-vars"
-									className="text-sm font-medium leading-none"
 								>
 									Environment Variables
 								</label>
 								<textarea
-									id="env-vars"
-									value={envVars}
-									onChange={(e) => setEnvVars(e.target.value)}
-									rows={3}
 									className="flex min-h-[60px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+									id="env-vars"
+									onChange={(e) => setEnvVars(e.target.value)}
 									placeholder="KEY=value&#10;KEY2=value2"
+									rows={3}
+									value={envVars}
 								/>
 							</div>
-							{error && <div className="text-sm text-destructive">{error}</div>}
+							{error && <div className="text-destructive text-sm">{error}</div>}
 						</div>
 					</CardContent>
 					<CardFooter className="flex-col gap-2">
 						<div className="flex w-full gap-2">
 							<Button
+								className="flex-1"
+								onClick={onCancel}
 								type="button"
 								variant="outline"
-								onClick={onCancel}
-								className="flex-1"
 							>
 								Cancel
 							</Button>
 							<Button
-								type="submit"
-								disabled={submitting || !flakeUrl.trim()}
 								className="flex-1"
+								disabled={submitting || !flakeUrl.trim()}
+								type="submit"
 							>
 								Save
 							</Button>
