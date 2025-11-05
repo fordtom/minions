@@ -6,7 +6,7 @@ import type {
 	ProcessWithState,
 } from "../shared/types";
 
-interface ProcessWithStateRow {
+type ProcessWithStateRow = {
 	id: number;
 	name: string | null;
 	flake_url: string;
@@ -18,10 +18,10 @@ interface ProcessWithStateRow {
 	pid: number | null;
 	status: string;
 	started_at: number | null;
-}
+};
 
 export class ProcessDatabase {
-	private db: Database;
+	private readonly db: Database;
 
 	constructor(path = "minions.db") {
 		this.db = new Database(path);
@@ -148,16 +148,25 @@ export class ProcessDatabase {
 
 	updateProcess(
 		id: number,
-		flake_url: string,
-		env_vars?: string | null,
-		args?: string | null,
-		name?: string | null
+		options: {
+			flake_url: string;
+			env_vars?: string | null;
+			args?: string | null;
+			name?: string | null;
+		}
 	): void {
 		const now = Date.now();
 		const stmt = this.db.prepare(
 			"UPDATE processes SET name = ?, flake_url = ?, env_vars = ?, args = ?, updated_at = ? WHERE id = ?"
 		);
-		stmt.run(name ?? null, flake_url, env_vars ?? null, args ?? null, now, id);
+		stmt.run(
+			options.name ?? null,
+			options.flake_url,
+			options.env_vars ?? null,
+			options.args ?? null,
+			now,
+			id
+		);
 	}
 
 	deleteProcess(id: number): void {

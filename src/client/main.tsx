@@ -44,8 +44,12 @@ function App() {
 
 	const columns = createColumns(fetchData);
 
-	if (loading) return <div className="p-4">Loading...</div>;
-	if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
+	if (loading) {
+		return <div className="p-4">Loading...</div>;
+	}
+	if (error) {
+		return <div className="p-4 text-red-500">Error: {error}</div>;
+	}
 
 	if (data.length === 0) {
 		return (
@@ -94,4 +98,6 @@ function App() {
 }
 
 const root = document.getElementById("root");
-if (root) createRoot(root).render(<App />);
+if (root) {
+	createRoot(root).render(<App />);
+}

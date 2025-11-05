@@ -71,7 +71,7 @@ export default function processRoutes(db: ProcessDatabase) {
 				);
 			}
 		}),
-		async (c) => {
+		(c) => {
 			try {
 				const body = c.req.valid("json");
 
@@ -111,7 +111,7 @@ export default function processRoutes(db: ProcessDatabase) {
 				);
 			}
 		}),
-		async (c) => {
+		(c) => {
 			try {
 				const id = Number.parseInt(c.req.param("id"), 10);
 
@@ -143,13 +143,12 @@ export default function processRoutes(db: ProcessDatabase) {
 					);
 				}
 
-				db.updateProcess(
-					id,
-					body.flake_url,
-					body.env_vars ?? null,
-					body.args ?? null,
-					body.name ?? null
-				);
+				db.updateProcess(id, {
+					flake_url: body.flake_url,
+					env_vars: body.env_vars ?? null,
+					args: body.args ?? null,
+					name: body.name ?? null,
+				});
 
 				const updated = db.getProcessWithId(id);
 

@@ -5,13 +5,17 @@ import { parse as parseShellArgs } from "shell-quote";
 export function parseEnvVars(
 	envString: string | null | undefined
 ): Record<string, string> {
-	if (!envString?.trim()) return {};
+	if (!envString?.trim()) {
+		return {};
+	}
 	return parseDotenv(envString);
 }
 
 // Parse command-line arguments
 export function parseArgs(argsString: string | null | undefined): string[] {
-	if (!argsString?.trim()) return [];
+	if (!argsString?.trim()) {
+		return [];
+	}
 
 	const parsed = parseShellArgs(argsString);
 

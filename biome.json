@@ -22,7 +22,8 @@
     "formatter": {
       "quoteStyle": "double"
     },
-    "jsxRuntime": "reactClassic"
+    "jsxRuntime": "reactClassic",
+    "globals": ["Bun"]
   },
   "assist": {
     "enabled": true,

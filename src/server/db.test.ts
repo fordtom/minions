@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { ProcessStatus } from "../shared/types";
 import { ProcessDatabase } from "./db";
 
+const NON_EXISTENT_ID = 999;
+const TEST_PID_1 = 12_345;
+const TEST_PID_2 = 111;
+const TEST_WAIT_MS = 10;
+
 describe("ProcessDatabase", () => {
 	let db: ProcessDatabase;
 
@@ -44,7 +49,7 @@ describe("ProcessDatabase", () => {
 		});
 
 		test("getProcess - returns null for non-existent id", () => {
-			const process = db.getProcess(999);
+			const process = db.getProcess(NON_EXISTENT_ID);
 			expect(process).toBeNull();
 		});
 
@@ -71,15 +76,14 @@ describe("ProcessDatabase", () => {
 			// Wait a bit to ensure updated_at changes
 			const wait = (ms: number) =>
 				new Promise((resolve) => setTimeout(resolve, ms));
-			wait(10);
+			wait(TEST_WAIT_MS);
 
-			db.updateProcess(
-				id,
-				"github:new/url#flake",
-				'{"NEW":"env"}',
-				"--new-arg",
-				"updated-name"
-			);
+			db.updateProcess(id, {
+				flake_url: "github:new/url#flake",
+				env_vars: '{"NEW":"env"}',
+				args: "--new-arg",
+				name: "updated-name",
+			});
 
 			const process = db.getProcess(id);
 			expect(process?.id).toBe(id);
@@ -87,7 +91,9 @@ describe("ProcessDatabase", () => {
 			expect(process?.flake_url).toBe("github:new/url#flake");
 			expect(process?.env_vars).toBe('{"NEW":"env"}');
 			expect(process?.args).toBe("--new-arg");
-			expect(process?.updated_at).toBeGreaterThanOrEqual(originalUpdatedAt!);
+			if (originalUpdatedAt !== null && originalUpdatedAt !== undefined) {
+				expect(process?.updated_at).toBeGreaterThanOrEqual(originalUpdatedAt);
+			}
 		});
 
 		test("deleteProcess - removes process", () => {
@@ -112,18 +118,18 @@ describe("ProcessDatabase", () => {
 
 		test("upsertProcessState - creates/updates state with started_at when RUNNING", () => {
 			const id = db.createProcess("github:foo/bar#baz");
-			db.upsertProcessState(id, 12_345, ProcessStatus.RUNNING);
+			db.upsertProcessState(id, TEST_PID_1, ProcessStatus.RUNNING);
 
 			const state = db.getProcessState(id);
 			expect(state?.process_id).toBe(id);
-			expect(state?.pid).toBe(12_345);
+			expect(state?.pid).toBe(TEST_PID_1);
 			expect(state?.status).toBe(ProcessStatus.RUNNING);
 			expect(state?.started_at).toBeGreaterThan(0);
 		});
 
 		test("upsertProcessState - updates existing state with null started_at when STOPPED", () => {
 			const id = db.createProcess("github:foo/bar#baz");
-			db.upsertProcessState(id, 12_345, ProcessStatus.RUNNING);
+			db.upsertProcessState(id, TEST_PID_1, ProcessStatus.RUNNING);
 			db.upsertProcessState(id, null, ProcessStatus.STOPPED);
 
 			const state = db.getProcessState(id);
@@ -134,13 +140,13 @@ describe("ProcessDatabase", () => {
 		});
 
 		test("getProcessState - returns null for non-existent process", () => {
-			const state = db.getProcessState(999);
+			const state = db.getProcessState(NON_EXISTENT_ID);
 			expect(state).toBeNull();
 		});
 
 		test("deleteProcess - cascades to process_state", () => {
 			const id = db.createProcess("github:foo/bar#baz");
-			db.upsertProcessState(id, 12_345, ProcessStatus.RUNNING);
+			db.upsertProcessState(id, TEST_PID_1, ProcessStatus.RUNNING);
 			db.deleteProcess(id);
 
 			const state = db.getProcessState(id);
@@ -156,7 +162,7 @@ describe("ProcessDatabase", () => {
 				"--flag",
 				"test-process"
 			);
-			db.upsertProcessState(id, 111, ProcessStatus.RUNNING);
+			db.upsertProcessState(id, TEST_PID_2, ProcessStatus.RUNNING);
 
 			const result = db.getProcessWithId(id);
 			expect(result).not.toBeNull();
@@ -168,13 +174,13 @@ describe("ProcessDatabase", () => {
 			expect(result?.created_at).toBeGreaterThan(0);
 			expect(result?.updated_at).toBeGreaterThan(0);
 			expect(result?.state.process_id).toBe(id);
-			expect(result?.state.pid).toBe(111);
+			expect(result?.state.pid).toBe(TEST_PID_2);
 			expect(result?.state.status).toBe(ProcessStatus.RUNNING);
 			expect(result?.state.started_at).toBeGreaterThan(0);
 		});
 
 		test("returns null for non-existent process", () => {
-			const result = db.getProcessWithId(999);
+			const result = db.getProcessWithId(NON_EXISTENT_ID);
 			expect(result).toBeNull();
 		});
 	});
@@ -193,7 +199,7 @@ describe("ProcessDatabase", () => {
 				null,
 				"process-2"
 			);
-			db.upsertProcessState(id1, 111, ProcessStatus.RUNNING);
+			db.upsertProcessState(id1, TEST_PID_2, ProcessStatus.RUNNING);
 			db.upsertProcessState(id2, null, ProcessStatus.STOPPED);
 
 			const result = db.listProcessesWithState();
@@ -207,7 +213,7 @@ describe("ProcessDatabase", () => {
 			expect(result[0].created_at).toBeGreaterThan(0);
 			expect(result[0].updated_at).toBeGreaterThan(0);
 			expect(result[0].state.process_id).toBe(id1);
-			expect(result[0].state.pid).toBe(111);
+			expect(result[0].state.pid).toBe(TEST_PID_2);
 			expect(result[0].state.status).toBe(ProcessStatus.RUNNING);
 			expect(result[0].state.started_at).toBeGreaterThan(0);
 

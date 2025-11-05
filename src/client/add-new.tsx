@@ -90,11 +90,12 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 	}
 
 	return (
-		<button
-			aria-label="Close modal"
+		// biome-ignore lint/a11y/useKeyWithClickEvents: we want to close the modal when the user clicks outside of it
+		// biome-ignore lint/a11y/noStaticElementInteractions: we want to close the modal when the user clicks outside of it
+		// biome-ignore lint/a11y/noNoninteractiveElementInteractions: we want to close the modal when the user clicks outside of it
+		<div
 			className="fixed inset-0 z-50 grid cursor-default place-items-center bg-black/50 p-4"
 			onClick={onCancel}
-			type="button"
 		>
 			<Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
 				<form onSubmit={handleSubmit}>
@@ -196,6 +197,6 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 					</CardFooter>
 				</form>
 			</Card>
-		</button>
+		</div>
 	);
 }

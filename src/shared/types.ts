@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export interface Process {
+export type Process = {
 	id: number;
 	name: string | null;
 	flake_url: string;
@@ -8,19 +8,21 @@ export interface Process {
 	args: string | null;
 	created_at: number;
 	updated_at: number;
-}
+};
 
-export interface ProcessState {
+export type ProcessState = {
 	process_id: number;
 	pid: number | null;
 	status: ProcessStatus;
 	started_at: number | null;
-}
+};
 
-export enum ProcessStatus {
-	STOPPED = "STOPPED",
-	RUNNING = "RUNNING",
-}
+export const ProcessStatus = {
+	STOPPED: "STOPPED",
+	RUNNING: "RUNNING",
+} as const;
+
+export type ProcessStatus = (typeof ProcessStatus)[keyof typeof ProcessStatus];
 
 export interface ProcessWithState extends Process {
 	state: ProcessState;
@@ -36,8 +38,8 @@ export const ProcessInputSchema = z.object({
 export type ProcessInput = z.infer<typeof ProcessInputSchema>;
 
 // API response wrapper
-export interface ApiResponse<T> {
+export type ApiResponse<T> = {
 	success: boolean;
 	data?: T;
 	error?: string;
-}
+};
