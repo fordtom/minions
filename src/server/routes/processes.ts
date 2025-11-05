@@ -1,5 +1,6 @@
+import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { type ProcessInput, ProcessStatus } from "../../shared/types";
+import { ProcessInputSchema, ProcessStatus } from "../../shared/types";
 import type { ProcessDatabase } from "../db";
 import { isFlakeRunning, killFlake, runFlake } from "../nix";
 
@@ -60,102 +61,110 @@ export default function processRoutes(db: ProcessDatabase) {
 	});
 
 	// POST /api/processes - Create new process
-	app.post("/", async (c) => {
-		try {
-			const body = await c.req.json<ProcessInput>();
-
-			if (!body.flake_url) {
+	app.post(
+		"/",
+		zValidator("json", ProcessInputSchema, (result, c) => {
+			if (!result.success) {
 				return c.json(
-					{ success: false, error: "flake_url is required" },
+					{ success: false, error: result.error.issues[0].message },
 					HttpStatus.BAD_REQUEST
 				);
 			}
+		}),
+		async (c) => {
+			try {
+				const body = c.req.valid("json");
 
-			const id = db.createProcess(
-				body.flake_url,
-				body.env_vars ?? null,
-				body.args ?? null,
-				body.name ?? null
-			);
-
-			const process = db.getProcessWithId(id);
-
-			return c.json(
-				{
-					success: true,
-					data: process,
-				},
-				HttpStatus.CREATED
-			);
-		} catch {
-			return c.json(
-				{ success: false, error: "Failed to create process" },
-				HttpStatus.INTERNAL_SERVER_ERROR
-			);
-		}
-	});
-
-	// PUT /api/processes/:id - Update process
-	app.put("/:id", async (c) => {
-		try {
-			const id = Number.parseInt(c.req.param("id"), 10);
-
-			if (Number.isNaN(id)) {
-				return c.json(
-					{ success: false, error: "Invalid ID" },
-					HttpStatus.BAD_REQUEST
+				const id = db.createProcess(
+					body.flake_url,
+					body.env_vars ?? null,
+					body.args ?? null,
+					body.name ?? null
 				);
-			}
 
-			const body = await c.req.json<ProcessInput>();
+				const process = db.getProcessWithId(id);
 
-			if (!body.flake_url) {
-				return c.json(
-					{ success: false, error: "flake_url is required" },
-					HttpStatus.BAD_REQUEST
-				);
-			}
-
-			const existing = db.getProcessWithId(id);
-			if (!existing) {
-				return c.json(
-					{ success: false, error: "Process not found" },
-					HttpStatus.NOT_FOUND
-				);
-			}
-
-			// Don't allow updates while running
-			if (existing.state.status === ProcessStatus.RUNNING) {
 				return c.json(
 					{
-						success: false,
-						error: "Cannot update running process. Stop it first.",
+						success: true,
+						data: process,
 					},
+					HttpStatus.CREATED
+				);
+			} catch {
+				return c.json(
+					{ success: false, error: "Failed to create process" },
+					HttpStatus.INTERNAL_SERVER_ERROR
+				);
+			}
+		}
+	);
+
+	// PUT /api/processes/:id - Update process
+	app.put(
+		"/:id",
+		zValidator("json", ProcessInputSchema, (result, c) => {
+			if (!result.success) {
+				return c.json(
+					{ success: false, error: result.error.issues[0].message },
 					HttpStatus.BAD_REQUEST
 				);
 			}
+		}),
+		async (c) => {
+			try {
+				const id = Number.parseInt(c.req.param("id"), 10);
 
-			db.updateProcess(
-				id,
-				body.flake_url,
-				body.env_vars ?? null,
-				body.args ?? null,
-				body.name ?? null
-			);
+				if (Number.isNaN(id)) {
+					return c.json(
+						{ success: false, error: "Invalid ID" },
+						HttpStatus.BAD_REQUEST
+					);
+				}
 
-			const updated = db.getProcessWithId(id);
+				const body = c.req.valid("json");
 
-			return c.json({
-				success: true,
-				data: updated,
-			});
-		} catch {
-			return c.json(
-				{ success: false, error: "Failed to update process" },
-				HttpStatus.INTERNAL_SERVER_ERROR
-			);
+				const existing = db.getProcessWithId(id);
+				if (!existing) {
+					return c.json(
+						{ success: false, error: "Process not found" },
+						HttpStatus.NOT_FOUND
+					);
+				}
+
+				// Don't allow updates while running
+				if (existing.state.status === ProcessStatus.RUNNING) {
+					return c.json(
+						{
+							success: false,
+							error: "Cannot update running process. Stop it first.",
+						},
+						HttpStatus.BAD_REQUEST
+					);
+				}
+
+				db.updateProcess(
+					id,
+					body.flake_url,
+					body.env_vars ?? null,
+					body.args ?? null,
+					body.name ?? null
+				);
+
+				const updated = db.getProcessWithId(id);
+
+				return c.json({
+					success: true,
+					data: updated,
+				});
+			} catch {
+				return c.json(
+					{ success: false, error: "Failed to update process" },
+					HttpStatus.INTERNAL_SERVER_ERROR
+				);
+			}
 		}
-	});
+	);
 
 	// DELETE /api/processes/:id - Delete process
 	app.delete("/:id", async (c) => {

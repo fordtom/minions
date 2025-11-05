@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export interface Process {
 	id: number;
 	name: string | null;
@@ -24,12 +26,14 @@ export interface ProcessWithState extends Process {
 	state: ProcessState;
 }
 
-export interface ProcessInput {
-	name?: string | null;
-	flake_url: string;
-	env_vars?: string | null;
-	args?: string | null;
-}
+export const ProcessInputSchema = z.object({
+	flake_url: z.string().min(1, "Flake URL is required"),
+	name: z.string().nullable().optional(),
+	args: z.string().nullable().optional(),
+	env_vars: z.string().nullable().optional(),
+});
+
+export type ProcessInput = z.infer<typeof ProcessInputSchema>;
 
 // API response wrapper
 export interface ApiResponse<T> {
