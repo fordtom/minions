@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useEffect, useState } from "react";
 import type { ApiResponse, ProcessInput } from "../shared/types";
 import { Button } from "./components/ui/button";
 import {
@@ -10,21 +10,23 @@ import {
 	CardTitle,
 } from "./components/ui/card";
 
-interface NewFlakeCardProps {
+type NewFlakeCardProps = {
 	open: boolean;
 	onCancel: () => void;
 	onSaved: () => void;
-}
+};
 
 export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
-	const [flakeUrl, setFlakeUrl] = React.useState("");
-	const [args, setArgs] = React.useState("");
-	const [envVars, setEnvVars] = React.useState("");
-	const [submitting, setSubmitting] = React.useState(false);
-	const [error, setError] = React.useState<string | null>(null);
+	const [name, setName] = useState("");
+	const [flakeUrl, setFlakeUrl] = useState("");
+	const [args, setArgs] = useState("");
+	const [envVars, setEnvVars] = useState("");
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-	React.useEffect(() => {
+	useEffect(() => {
 		if (!open) {
+			setName("");
 			setFlakeUrl("");
 			setArgs("");
 			setEnvVars("");
@@ -33,24 +35,31 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 		}
 	}, [open]);
 
-	React.useEffect(() => {
-		if (!open) return;
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
 		const handleEscape = (e: KeyboardEvent) => {
-			if (e.key === "Escape") onCancel();
+			if (e.key === "Escape") {
+				onCancel();
+			}
 		};
 		window.addEventListener("keydown", handleEscape);
 		return () => window.removeEventListener("keydown", handleEscape);
 	}, [open, onCancel]);
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: { preventDefault: () => void }) => {
 		e.preventDefault();
-		if (!flakeUrl.trim() || submitting) return;
+		if (!flakeUrl.trim() || submitting) {
+			return;
+		}
 
 		setSubmitting(true);
 		setError(null);
 
 		try {
 			const payload: ProcessInput = {
+				name: name.trim() || null,
 				flake_url: flakeUrl.trim(),
 				args: args.trim() || null,
 				env_vars: envVars.trim() || null,
@@ -76,7 +85,9 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 		}
 	};
 
-	if (!open) return null;
+	if (!open) {
+		return null;
+	}
 
 	return (
 		<button
@@ -99,9 +110,25 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 							<div className="grid gap-2">
 								<label
 									className="font-medium text-sm leading-none"
+									htmlFor="name"
+								>
+									Name
+								</label>
+								<input
+									className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+									id="name"
+									onChange={(e) => setName(e.target.value)}
+									placeholder="Name"
+									type="text"
+									value={name}
+								/>
+							</div>
+							<div className="grid gap-2">
+								<label
+									className="font-medium text-sm leading-none"
 									htmlFor="flake-url"
 								>
-									Flake URL
+									Flake URL (required)
 								</label>
 								<input
 									className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"

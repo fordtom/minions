@@ -6,7 +6,7 @@ import {
 	PlayIcon,
 	Trash2Icon,
 } from "lucide-react";
-import * as React from "react";
+import { useEffect, useState } from "react";
 import {
 	type ApiResponse,
 	ProcessStatus,
@@ -20,33 +20,60 @@ import {
 	DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 
+const MS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const SECONDS_PER_HOUR = 3600;
+
+function RunningTimer({ startedAt }: { startedAt: number }) {
+	const [elapsed, setElapsed] = useState(0);
+
+	useEffect(() => {
+		const updateElapsed = () => {
+			setElapsed(Math.floor((Date.now() - startedAt) / MS_PER_SECOND));
+		};
+
+		updateElapsed();
+		const interval = setInterval(updateElapsed, MS_PER_SECOND);
+		return () => clearInterval(interval);
+	}, [startedAt]);
+
+	const hours = Math.floor(elapsed / SECONDS_PER_HOUR);
+	const minutes = Math.floor((elapsed % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE);
+	const seconds = elapsed % SECONDS_PER_MINUTE;
+
+	if (hours > 0) {
+		return <>{`${hours}h ${minutes}m ${seconds}s`}</>;
+	}
+	if (minutes > 0) {
+		return <>{`${minutes}m ${seconds}s`}</>;
+	}
+	return <>{`${seconds}s`}</>;
+}
+
 export const createColumns = (
 	refetch: () => void
 ): ColumnDef<ProcessWithState>[] => [
 	{
-		accessorKey: "flake_url",
-		header: "Flake URL",
-	},
-	{
-		accessorKey: "args",
-		header: () => <div className="text-left">Args</div>,
-		cell: ({ getValue }) => (
-			<div className="text-left">{getValue() as string}</div>
-		),
-	},
-	{
-		accessorKey: "env_vars",
-		header: () => <div className="text-left">Env Vars</div>,
-		cell: ({ getValue }) => (
-			<div className="text-left">{getValue() as string}</div>
-		),
+		accessorKey: "name",
+		header: "Name",
+		cell: ({ row }) => row.original.name || row.original.flake_url,
 	},
 	{
 		accessorKey: "state.status",
 		header: () => <div className="text-right">Status</div>,
-		cell: ({ getValue }) => (
-			<div className="text-right">{getValue() as string}</div>
-		),
+		cell: ({ row }) => {
+			const status = row.original.state.status;
+			const startedAt = row.original.state.started_at;
+			return (
+				<div className="text-right">
+					{status === ProcessStatus.RUNNING && startedAt ? (
+						<RunningTimer startedAt={startedAt} />
+					) : (
+						status
+					)}
+				</div>
+			);
+		},
 	},
 	{
 		id: "actions",
@@ -63,11 +90,9 @@ export const createColumns = (
 					const result: ApiResponse<ProcessWithState> = await res.json();
 					if (result.success) {
 						refetch();
-					} else {
-						console.error("Failed to start:", result.error);
 					}
-				} catch (err) {
-					console.error("Failed to start process:", err);
+				} catch {
+					// Error handled silently
 				}
 			};
 
@@ -79,11 +104,9 @@ export const createColumns = (
 					const result: ApiResponse<ProcessWithState> = await res.json();
 					if (result.success) {
 						refetch();
-					} else {
-						console.error("Failed to stop:", result.error);
 					}
-				} catch (err) {
-					console.error("Failed to stop process:", err);
+				} catch {
+					// Error handled silently
 				}
 			};
 
@@ -95,11 +118,9 @@ export const createColumns = (
 					const result: ApiResponse<{ id: number }> = await res.json();
 					if (result.success) {
 						refetch();
-					} else {
-						console.error("Failed to delete:", result.error);
 					}
-				} catch (err) {
-					console.error("Failed to delete process:", err);
+				} catch {
+					// Error handled silently
 				}
 			};
 
