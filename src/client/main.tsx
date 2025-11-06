@@ -21,6 +21,7 @@ function App() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isNewOpen, setIsNewOpen] = useState(false);
+	const [editingProcess, setEditingProcess] = useState<ProcessWithState | undefined>(undefined);
 
 	const fetchData = useCallback(() => {
 		setLoading(true);
@@ -42,7 +43,23 @@ function App() {
 		fetchData();
 	}, [fetchData]);
 
-	const columns = createColumns(fetchData);
+	const handleEdit = useCallback((process: ProcessWithState) => {
+		setEditingProcess(process);
+		setIsNewOpen(true);
+	}, []);
+
+	const handleModalClose = useCallback(() => {
+		setIsNewOpen(false);
+		setEditingProcess(undefined);
+	}, []);
+
+	const handleModalSaved = useCallback(() => {
+		setIsNewOpen(false);
+		setEditingProcess(undefined);
+		fetchData();
+	}, [fetchData]);
+
+	const columns = createColumns(fetchData, handleEdit);
 
 	if (loading) {
 		return <div className="p-4">Loading...</div>;
@@ -67,12 +84,10 @@ function App() {
 					</EmptyContent>
 				</Empty>
 				<NewFlakeCard
-					onCancel={() => setIsNewOpen(false)}
-					onSaved={() => {
-						setIsNewOpen(false);
-						fetchData();
-					}}
+					onCancel={handleModalClose}
+					onSaved={handleModalSaved}
 					open={isNewOpen}
+					editProcess={editingProcess}
 				/>
 			</div>
 		);
@@ -86,12 +101,10 @@ function App() {
 			</div>
 			<DataTable columns={columns} data={data} />
 			<NewFlakeCard
-				onCancel={() => setIsNewOpen(false)}
-				onSaved={() => {
-					setIsNewOpen(false);
-					fetchData();
-				}}
+				onCancel={handleModalClose}
+				onSaved={handleModalSaved}
 				open={isNewOpen}
+				editProcess={editingProcess}
 			/>
 		</div>
 	);

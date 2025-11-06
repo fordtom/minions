@@ -51,7 +51,8 @@ function RunningTimer({ startedAt }: { startedAt: number }) {
 }
 
 export const createColumns = (
-	refetch: () => void
+	refetch: () => void,
+	onEdit: (process: ProcessWithState) => void
 ): ColumnDef<ProcessWithState>[] => [
 	{
 		accessorKey: "name",
@@ -144,7 +145,7 @@ export const createColumns = (
 								Start process
 							</DropdownMenuItem>
 						)}
-						<DropdownMenuItem>
+						<DropdownMenuItem onClick={() => onEdit(row.original)}>
 							<PencilIcon />
 							Edit process
 						</DropdownMenuItem>

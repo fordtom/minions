@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ApiResponse, ProcessInput } from "../shared/types";
+import type { ApiResponse, ProcessInput, ProcessWithState } from "../shared/types";
 import { Button } from "./components/ui/button";
 import {
 	Card,
@@ -14,9 +14,10 @@ type NewFlakeCardProps = {
 	open: boolean;
 	onCancel: () => void;
 	onSaved: () => void;
+	editProcess?: ProcessWithState;
 };
 
-export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
+export function NewFlakeCard({ open, onCancel, onSaved, editProcess }: NewFlakeCardProps) {
 	const [name, setName] = useState("");
 	const [flakeUrl, setFlakeUrl] = useState("");
 	const [args, setArgs] = useState("");
@@ -24,6 +25,19 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const isEditMode = !!editProcess;
+
+	// Pre-populate form when editing
+	useEffect(() => {
+		if (open && editProcess) {
+			setName(editProcess.name || "");
+			setFlakeUrl(editProcess.flake_url);
+			setArgs(editProcess.args || "");
+			setEnvVars(editProcess.env_vars || "");
+		}
+	}, [open, editProcess]);
+
+	// Clear form when modal closes
 	useEffect(() => {
 		if (!open) {
 			setName("");
@@ -65,8 +79,13 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 				env_vars: envVars.trim() || null,
 			};
 
-			const res = await fetch("/api/processes", {
-				method: "POST",
+			const url = isEditMode
+				? `/api/processes/${editProcess.id}`
+				: "/api/processes";
+			const method = isEditMode ? "PUT" : "POST";
+
+			const res = await fetch(url, {
+				method,
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(payload),
 			});
@@ -76,10 +95,10 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 			if (result.success) {
 				onSaved();
 			} else {
-				setError(result.error || "Failed to create process");
+				setError(result.error || `Failed to ${isEditMode ? "update" : "create"} process`);
 			}
 		} catch {
-			setError("Failed to create process");
+			setError(`Failed to ${isEditMode ? "update" : "create"} process`);
 		} finally {
 			setSubmitting(false);
 		}
@@ -100,10 +119,11 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 			<Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
 				<form onSubmit={handleSubmit}>
 					<CardHeader>
-						<CardTitle>New flake</CardTitle>
+						<CardTitle>{isEditMode ? "Edit flake" : "New flake"}</CardTitle>
 						<CardDescription>
-							Enter the flake's url, and any arguments or environment variables
-							the process will need.
+							{isEditMode
+								? "Update the flake's configuration."
+								: "Enter the flake's url, and any arguments or environment variables the process will need."}
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -191,7 +211,7 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 								disabled={submitting || !flakeUrl.trim()}
 								type="submit"
 							>
-								Save
+								{isEditMode ? "Update" : "Save"}
 							</Button>
 						</div>
 					</CardFooter>
