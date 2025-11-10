@@ -59,8 +59,8 @@ describe("ProcessDatabase", () => {
 
 			const processes = db.listProcesses();
 			expect(processes).toHaveLength(2);
-			expect(processes[0].flake_url).toBe("github:foo/bar#baz");
-			expect(processes[1].flake_url).toBe("github:my/test#flake");
+			expect(processes[0]?.flake_url).toBe("github:foo/bar#baz");
+			expect(processes[1]?.flake_url).toBe("github:my/test#flake");
 		});
 
 		test("listProcesses - returns empty array when no processes", () => {
@@ -205,29 +205,29 @@ describe("ProcessDatabase", () => {
 			const result = db.listProcessesWithState();
 			expect(result).toHaveLength(2);
 
-			expect(result[0].id).toBe(id1);
-			expect(result[0].name).toBe("process-1");
-			expect(result[0].flake_url).toBe("github:foo/bar#baz");
-			expect(result[0].env_vars).toBeNull();
-			expect(result[0].args).toBeNull();
-			expect(result[0].created_at).toBeGreaterThan(0);
-			expect(result[0].updated_at).toBeGreaterThan(0);
-			expect(result[0].state.process_id).toBe(id1);
-			expect(result[0].state.pid).toBe(TEST_PID_2);
-			expect(result[0].state.status).toBe(ProcessStatus.RUNNING);
-			expect(result[0].state.started_at).toBeGreaterThan(0);
+			expect(result[0]?.id).toBe(id1);
+			expect(result[0]?.name).toBe("process-1");
+			expect(result[0]?.flake_url).toBe("github:foo/bar#baz");
+			expect(result[0]?.env_vars).toBeNull();
+			expect(result[0]?.args).toBeNull();
+			expect(result[0]?.created_at).toBeGreaterThan(0);
+			expect(result[0]?.updated_at).toBeGreaterThan(0);
+			expect(result[0]?.state.process_id).toBe(id1);
+			expect(result[0]?.state.pid).toBe(TEST_PID_2);
+			expect(result[0]?.state.status).toBe(ProcessStatus.RUNNING);
+			expect(result[0]?.state.started_at).toBeGreaterThan(0);
 
-			expect(result[1].id).toBe(id2);
-			expect(result[1].name).toBe("process-2");
-			expect(result[1].flake_url).toBe("github:my/test#flake");
-			expect(result[1].env_vars).toBeNull();
-			expect(result[1].args).toBeNull();
-			expect(result[1].created_at).toBeGreaterThan(0);
-			expect(result[1].updated_at).toBeGreaterThan(0);
-			expect(result[1].state.process_id).toBe(id2);
-			expect(result[1].state.pid).toBeNull();
-			expect(result[1].state.status).toBe(ProcessStatus.STOPPED);
-			expect(result[1].state.started_at).toBeNull();
+			expect(result[1]?.id).toBe(id2);
+			expect(result[1]?.name).toBe("process-2");
+			expect(result[1]?.flake_url).toBe("github:my/test#flake");
+			expect(result[1]?.env_vars).toBeNull();
+			expect(result[1]?.args).toBeNull();
+			expect(result[1]?.created_at).toBeGreaterThan(0);
+			expect(result[1]?.updated_at).toBeGreaterThan(0);
+			expect(result[1]?.state.process_id).toBe(id2);
+			expect(result[1]?.state.pid).toBeNull();
+			expect(result[1]?.state.status).toBe(ProcessStatus.STOPPED);
+			expect(result[1]?.state.started_at).toBeNull();
 		});
 
 		test("returns empty array when no processes", () => {

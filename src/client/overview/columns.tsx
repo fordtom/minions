@@ -7,11 +7,7 @@ import {
 	Trash2Icon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-	type ApiResponse,
-	ProcessStatus,
-	type ProcessWithState,
-} from "../../shared/types";
+import { ProcessStatus, type ProcessWithState } from "../../shared/types";
 import { Button } from "../components/ui/button";
 import {
 	DropdownMenu,
@@ -19,6 +15,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
+import { trpc } from "../lib/trpc";
 
 const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
@@ -50,9 +47,74 @@ function RunningTimer({ startedAt }: { startedAt: number }) {
 	return <>{`${seconds}s`}</>;
 }
 
-export const createColumns = (
-	refetch: () => void
-): ColumnDef<ProcessWithState>[] => [
+function ActionsCell({ process }: { process: ProcessWithState }) {
+	const utils = trpc.useUtils();
+	const isRunning = process.state.status === ProcessStatus.RUNNING;
+
+	const startMutation = trpc.processes.start.useMutation({
+		onSuccess: () => {
+			utils.processes.list.invalidate();
+		},
+	});
+
+	const stopMutation = trpc.processes.stop.useMutation({
+		onSuccess: () => {
+			utils.processes.list.invalidate();
+		},
+	});
+
+	const deleteMutation = trpc.processes.delete.useMutation({
+		onSuccess: () => {
+			utils.processes.list.invalidate();
+		},
+	});
+
+	const handleStart = () => {
+		startMutation.mutate({ id: process.id });
+	};
+
+	const handleStop = () => {
+		stopMutation.mutate({ id: process.id });
+	};
+
+	const handleDelete = () => {
+		deleteMutation.mutate({ id: process.id });
+	};
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button className="h-8 w-8 p-0" variant="ghost">
+					<span className="sr-only">Open menu</span>
+					<MoreHorizontal className="h-4 w-4" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end">
+				{isRunning ? (
+					<DropdownMenuItem onClick={handleStop}>
+						<PauseIcon />
+						Stop process
+					</DropdownMenuItem>
+				) : (
+					<DropdownMenuItem onClick={handleStart}>
+						<PlayIcon />
+						Start process
+					</DropdownMenuItem>
+				)}
+				<DropdownMenuItem>
+					<PencilIcon />
+					Edit process
+				</DropdownMenuItem>
+				<DropdownMenuItem onClick={handleDelete}>
+					<Trash2Icon />
+					Delete process
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+export const createColumns = (): ColumnDef<ProcessWithState>[] => [
 	{
 		accessorKey: "name",
 		header: "Name",
@@ -78,83 +140,6 @@ export const createColumns = (
 	{
 		id: "actions",
 		header: "",
-		cell: ({ row }) => {
-			const id = row.original.id;
-			const isRunning = row.original.state.status === ProcessStatus.RUNNING;
-
-			const handleStart = async () => {
-				try {
-					const res = await fetch(`/api/processes/${id}/start`, {
-						method: "POST",
-					});
-					const result: ApiResponse<ProcessWithState> = await res.json();
-					if (result.success) {
-						refetch();
-					}
-				} catch {
-					// Error handled silently
-				}
-			};
-
-			const handleStop = async () => {
-				try {
-					const res = await fetch(`/api/processes/${id}/stop`, {
-						method: "POST",
-					});
-					const result: ApiResponse<ProcessWithState> = await res.json();
-					if (result.success) {
-						refetch();
-					}
-				} catch {
-					// Error handled silently
-				}
-			};
-
-			const handleDelete = async () => {
-				try {
-					const res = await fetch(`/api/processes/${id}`, {
-						method: "DELETE",
-					});
-					const result: ApiResponse<{ id: number }> = await res.json();
-					if (result.success) {
-						refetch();
-					}
-				} catch {
-					// Error handled silently
-				}
-			};
-
-			return (
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button className="h-8 w-8 p-0" variant="ghost">
-							<span className="sr-only">Open menu</span>
-							<MoreHorizontal className="h-4 w-4" />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
-						{isRunning ? (
-							<DropdownMenuItem onClick={handleStop}>
-								<PauseIcon />
-								Stop process
-							</DropdownMenuItem>
-						) : (
-							<DropdownMenuItem onClick={handleStart}>
-								<PlayIcon />
-								Start process
-							</DropdownMenuItem>
-						)}
-						<DropdownMenuItem>
-							<PencilIcon />
-							Edit process
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={handleDelete}>
-							<Trash2Icon />
-							Delete process
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
-			);
-		},
+		cell: ({ row }) => <ActionsCell process={row.original} />,
 	},
 ];

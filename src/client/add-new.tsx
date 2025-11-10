@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ApiResponse, ProcessInput } from "../shared/types";
+import type { ProcessInput } from "../shared/types";
 import { Button } from "./components/ui/button";
 import {
 	Card,
@@ -9,6 +9,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "./components/ui/card";
+import { trpc } from "./lib/trpc";
 
 type NewFlakeCardProps = {
 	open: boolean;
@@ -21,8 +22,16 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 	const [flakeUrl, setFlakeUrl] = useState("");
 	const [args, setArgs] = useState("");
 	const [envVars, setEnvVars] = useState("");
-	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	const createMutation = trpc.processes.create.useMutation({
+		onSuccess: () => {
+			onSaved();
+		},
+		onError: (err) => {
+			setError(err.message || "Failed to create process");
+		},
+	});
 
 	useEffect(() => {
 		if (!open) {
@@ -31,7 +40,6 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 			setArgs("");
 			setEnvVars("");
 			setError(null);
-			setSubmitting(false);
 		}
 	}, [open]);
 
@@ -48,41 +56,22 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 		return () => window.removeEventListener("keydown", handleEscape);
 	}, [open, onCancel]);
 
-	const handleSubmit = async (e: { preventDefault: () => void }) => {
+	const handleSubmit = (e: { preventDefault: () => void }) => {
 		e.preventDefault();
-		if (!flakeUrl.trim() || submitting) {
+		if (!flakeUrl.trim() || createMutation.isPending) {
 			return;
 		}
 
-		setSubmitting(true);
 		setError(null);
 
-		try {
-			const payload: ProcessInput = {
-				name: name.trim() || null,
-				flake_url: flakeUrl.trim(),
-				args: args.trim() || null,
-				env_vars: envVars.trim() || null,
-			};
+		const payload: ProcessInput = {
+			name: name.trim() || null,
+			flake_url: flakeUrl.trim(),
+			args: args.trim() || null,
+			env_vars: envVars.trim() || null,
+		};
 
-			const res = await fetch("/api/processes", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(payload),
-			});
-
-			const result: ApiResponse<unknown> = await res.json();
-
-			if (result.success) {
-				onSaved();
-			} else {
-				setError(result.error || "Failed to create process");
-			}
-		} catch {
-			setError("Failed to create process");
-		} finally {
-			setSubmitting(false);
-		}
+		createMutation.mutate(payload);
 	};
 
 	if (!open) {
@@ -188,7 +177,7 @@ export function NewFlakeCard({ open, onCancel, onSaved }: NewFlakeCardProps) {
 							</Button>
 							<Button
 								className="flex-1"
-								disabled={submitting || !flakeUrl.trim()}
+								disabled={createMutation.isPending || !flakeUrl.trim()}
 								type="submit"
 							>
 								Save
